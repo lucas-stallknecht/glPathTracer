@@ -10,95 +10,90 @@
 #include <sstream>
 
 
-namespace lgl {
+namespace rt {
 
-    Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) : m_id(0)
-    {
-        std::string vertexCode, fragmentCode;
-        const bool parseSuccess = parseShader(vertexPath, fragmentPath, vertexCode, fragmentCode);
-        if(parseSuccess){
-            m_id = createShader(vertexCode, fragmentCode);
-        }
+    Shader::Shader(const std::string &vertPath, const std::string &fragPath) : m_program(
+            0) {
+        std::string vertCode, fragCode, compCode;
+        parseShaderFile(vertPath, vertCode);
+        parseShaderFile(fragPath, fragCode);
+
+        m_program = compileShader(vertCode.c_str(), fragCode.c_str());
     }
 
-    bool Shader::parseShader(const std::string& vertexPath, const std::string& fragmentPath,
-                               std::string& vertexCode, std::string& fragmentCode)
-    {
-        std::ifstream vShaderFile;
-        std::ifstream fShaderFile;
+    void Shader::parseShaderFile(const std::string &filePath,  std::string& sourceCode) {
+        std::ifstream shaderFile;
         // ensure ifstream objects can throw exceptions:
-        vShaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
-        fShaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
-        try
-        {
+        shaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        try {
             // open files
-            vShaderFile.open(vertexPath);
-            fShaderFile.open(fragmentPath);
-            std::stringstream vShaderStream, fShaderStream;
+            shaderFile.open(filePath);
+            std::stringstream shaderStream;
             // read file's buffer contents into streams
-            vShaderStream << vShaderFile.rdbuf();
-            fShaderStream << fShaderFile.rdbuf();
+            shaderStream << shaderFile.rdbuf();
             // close file handlers
-            vShaderFile.close();
-            fShaderFile.close();
+            shaderFile.close();
             // convert stream into string
-            vertexCode   = vShaderStream.str();
-            fragmentCode = fShaderStream.str();
+            sourceCode = shaderStream.str();
         }
-        catch(std::ifstream::failure e)
-        {
-            std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
-            return false;
+        catch (std::ifstream::failure e) {
+            std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ : " << filePath << std::endl;
         }
-        return true;
     }
 
-    unsigned int Shader::compileShader(unsigned int shaderType, const std::string &source) {
-
-        unsigned int shaderId = glCreateShader(shaderType);
-        const char* src = source.c_str();
-
-        glShaderSource(shaderId, 1, &src, nullptr);
-        glCompileShader(shaderId);
-
-        int  success;
-        char infoLog[512];
-        glGetShaderiv(shaderId, GL_COMPILE_STATUS, &success);
-        if(!success)
-        {
-            glGetShaderInfoLog(shaderId, 512, nullptr, infoLog);
-            std::cout << "ERROR::SHADER::" << shaderType << "::COMPILATION_FAILED\n" << infoLog << std::endl;
-            return 0;
+    void Shader::checkCompileErrors(GLuint shader, std::string type) {
+        int success;
+        char infoLog[1024];
+        if (type != "PROGRAM") {
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+            if (!success) {
+                glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+                std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog
+                          << "\n -- --------------------------------------------------- -- " << std::endl;
+            }
+        } else {
+            glGetProgramiv(shader, GL_LINK_STATUS, &success);
+            if (!success) {
+                glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+                std::cout << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog
+                          << "\n -- --------------------------------------------------- -- " << std::endl;
+            }
         }
-
-        return shaderId;
     }
 
-    unsigned int Shader::createShader(const std::string& vertexCode, const std::string& fragmentCode){
-        unsigned int programId = glCreateProgram();
-        unsigned int vid = compileShader(GL_VERTEX_SHADER, vertexCode);
-        unsigned int fid = compileShader(GL_FRAGMENT_SHADER, fragmentCode);
-        glAttachShader(programId, vid);
-        glAttachShader(programId, fid);
+    GLuint Shader::compileShader(const char *vertCode, const char *fragCode) {
+        GLuint vertex = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertex, 1, &vertCode, nullptr);
+        glCompileShader(vertex);
+        checkCompileErrors(vertex, "VERTEX");
 
-        glLinkProgram(programId);
-        glValidateProgram(programId);
+        GLuint fragment = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragment, 1, &fragCode, nullptr);
+        glCompileShader(fragment);
+        checkCompileErrors(fragment, "FRAGMENT");
 
-        glDeleteShader(vid);
-        glDeleteShader(fid);
+        GLuint program = glCreateProgram();
+        glAttachShader(program, vertex);
+        glAttachShader(program, fragment);
+        glLinkProgram(program);
+        checkCompileErrors(program, "PROGRAM");
 
-        return programId;
+        glDeleteShader(fragment);
+        glDeleteShader(vertex);
+
+        return program;
     }
 
-    void Shader::bind(){
-        glUseProgram(m_id);
+    void Shader::use() {
+        glUseProgram(m_program);
     }
-    void Shader::unbind(){
+
+    void Shader::disuse() {
         glUseProgram(0);
     }
 
-    void Shader::setUniformVec4(const std::string& name, float f1, float f2, float f3, float f4){
-        GLint loc = glGetUniformLocation(m_id, name.c_str());
+    void Shader::setUniformVec4(const std::string &name, float f1, float f2, float f3, float f4) {
+        GLuint loc = glGetUniformLocation(m_program, name.c_str());
         glUniform4f(loc, f1, f2, f3, f4);
     }
 

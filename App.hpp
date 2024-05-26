@@ -9,17 +9,20 @@
 #include <GLFW/glfw3.h>
 #include <memory>
 
-namespace lgl {
+namespace rt {
 
     class App {
 
-        static constexpr int DF_WIDTH = 1280;
-        static constexpr int DF_HEIGHT = 720;
+        static constexpr int LAYOUT_WIDTH = 1280;
+        static constexpr int PANEL_WIDTH = 300;
+        static constexpr int HEIGHT = 720;
 
     public:
 
         App();
+
         void run();
+
         ~App();
 
     private:

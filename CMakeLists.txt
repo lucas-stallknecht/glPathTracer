@@ -8,6 +8,7 @@ add_executable(LearnOpenGL main.cpp
         App.cpp
         Renderer.cpp
         Shader.cpp
+        ComputeShader.cpp
 )
 
 include_directories(

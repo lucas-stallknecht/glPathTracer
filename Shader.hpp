@@ -5,26 +5,23 @@
 #pragma once
 
 #include <string>
+#include <glad/glad.h>
 
-namespace lgl {
+namespace rt {
 
-    class Shader
-    {
+    class Shader {
     public:
-        Shader(const std::string& vertexPath, const std::string& fragmentPath);
-        void bind();
-        void unbind();
-
-        void setUniformVec4(const std::string& name, float f1, float f2, float f3, float f4);
+        Shader(const std::string &vertPath, const std::string &fragPath);
+        void use();
+        void disuse();
+        void setUniformVec4(const std::string &name, float f1, float f2, float f3, float f4);
+        static void checkCompileErrors(GLuint shader, std::string type);
+        static void parseShaderFile(const std::string &filePath,  std::string& sourceCode);
 
     private:
-        bool parseShader(const std::string& vertexPath, const std::string& fragmentPath,
-                           std::string& vertexCode,
-                           std::string& fragmentCode);
-        unsigned int compileShader(unsigned int shaderType, const std::string& source);
-        unsigned int createShader(const std::string& vertexCode, const std::string& fragmentCode);
+        GLuint compileShader(const char *vertCode, const char *fragCode);
 
-        unsigned int m_id;
+        GLuint m_program;
     };
 
 } // lgl

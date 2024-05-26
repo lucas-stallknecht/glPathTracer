@@ -2,6 +2,6 @@
 
 int main()
 {
-    lgl::App app;
+    rt::App app;
     app.run();
 }
