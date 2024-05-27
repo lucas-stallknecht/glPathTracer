@@ -20,9 +20,11 @@ namespace rt {
         void draw();
 
     private:
+        const int VP_WIDTH, VP_HEIGHT;
         std::unique_ptr<Shader> m_shader;
         std::unique_ptr<ComputeShader> m_compShader;
         GLuint m_vao;
+        GLuint m_rtTexture;
     };
 
 } // lgl

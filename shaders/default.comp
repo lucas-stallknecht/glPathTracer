@@ -1,16 +1,71 @@
 #version 450 core
 
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
 layout(rgba32f, binding = 0) uniform image2D imgOutput;
+
+#define N_BOUNCES 1
+
+struct Ray{
+    vec3 ro;
+    vec3 rd;
+};
+
+struct HitInfo{
+    vec3 pos;
+    vec3 normal;
+    float t;
+    vec3 diffuseColor;
+};
+
+float raySphereIntersect(Ray ray, vec3 s0, float sr) {
+    float a = dot(ray.rd, ray.rd);
+    vec3 s0_r0 = ray.ro - s0;
+    float b = 2.0 * dot(ray.rd, s0_r0);
+    float c = dot(s0_r0, s0_r0) - (sr * sr);
+    if (b*b - 4.0*a*c < 0.0) {
+        return -1.0;
+    }
+    return (-b - sqrt((b*b) - 4.0*a*c))/(2.0*a);
+}
+
+HitInfo intersects(Ray ray){
+    HitInfo hi;
+    hi.diffuseColor = vec3(0.);
+
+    float t = raySphereIntersect(ray, vec3(0., 0., 0.), 1.0);
+    if(t > 0.)
+            hi.diffuseColor = vec3(1.0);
+
+    return hi;
+}
+
+vec3 trace(Ray ray){
+    vec3 col = vec3(0.);
+
+    for(int i = 0; i < N_BOUNCES; i++){
+        col = intersects(ray).diffuseColor;
+    }
+
+    return col;
+}
 
 
 
 void main() {
-    vec4 value = vec4(0.0, 0.0, 0.0, 1.0);
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+    // Here gl_NumWorkGroups is basically resolution
+    vec2 uv;
+    uv.x = (float(texelCoord.x) - .5*gl_NumWorkGroups.x);
+    uv.y = (float(texelCoord.y) - .5*gl_NumWorkGroups.y);
+    uv /= gl_NumWorkGroups.y;
 
-    value.x = float(texelCoord.x)/(gl_NumWorkGroups.x);
-    value.y = float(texelCoord.y)/(gl_NumWorkGroups.y);
+    Ray cam;
+    cam.ro  = vec3(0, 0, -5);
+    cam.rd = vec3(uv, 1.3);
 
-    imageStore(imgOutput, texelCoord, value);
+    vec3 finalCol = trace(cam);
+
+
+    imageStore(imgOutput, texelCoord, vec4(finalCol, 1.0));
 }
