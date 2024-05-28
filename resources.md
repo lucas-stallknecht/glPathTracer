@@ -8,4 +8,3 @@
 
 - https://raytracing.github.io/
 
-miaou

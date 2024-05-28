@@ -92,10 +92,5 @@ namespace rt {
         glUseProgram(0);
     }
 
-    void Shader::setUniformVec4(const std::string &name, float f1, float f2, float f3, float f4) {
-        GLuint loc = glGetUniformLocation(m_program, name.c_str());
-        glUniform4f(loc, f1, f2, f3, f4);
-    }
-
 
 } // lgl

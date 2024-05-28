@@ -1,41 +1,75 @@
 #version 450 core
 
-layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-
-layout(rgba32f, binding = 0) uniform image2D imgOutput;
-
 #define N_BOUNCES 1
 
 struct Ray{
     vec3 ro;
     vec3 rd;
 };
-
+struct Material{
+    vec3 diffuseCol; // 16
+    vec3 emissiveCol; // 16
+};
 struct HitInfo{
+    bool hit;
+    float dist;
     vec3 pos;
     vec3 normal;
-    float t;
-    vec3 diffuseColor;
+    Material material;
 };
+struct Sphere {
+                        // base alignment   // aligned offset
+    vec3 pos;           // 16               // 0
+    Material material;  // 32               // 16
+    float rad;          // 4               // 48
+    float padding;     // 4               // 52
+};// 64 bytes total after auto padding
 
-float raySphereIntersect(Ray ray, vec3 s0, float sr) {
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(rgba32f, binding = 0) uniform image2D imgOutput;
+
+layout (std430, binding = 1)  readonly buffer ssbo{
+    Sphere[] spheres;
+};
+uniform int numSpheres;
+
+
+HitInfo raySphereIntersect(Ray ray, Sphere sph) {
+    HitInfo hi;
+    hi.hit = false;
     float a = dot(ray.rd, ray.rd);
-    vec3 s0_r0 = ray.ro - s0;
+    vec3 s0_r0 = ray.ro - sph.pos;
     float b = 2.0 * dot(ray.rd, s0_r0);
-    float c = dot(s0_r0, s0_r0) - (sr * sr);
+    float c = dot(s0_r0, s0_r0) - (sph.rad * sph.rad);
+
     if (b*b - 4.0*a*c < 0.0) {
-        return -1.0;
+        return hi;
     }
-    return (-b - sqrt((b*b) - 4.0*a*c))/(2.0*a);
+
+    // distance to sphere
+    float t = (-b - sqrt((b*b) - 4.0*a*c))/(2.0*a);
+
+    if(t > 0){
+        hi.hit = true;
+        hi.dist = t;
+        hi.pos = ray.ro + ray.rd * t;
+        hi.normal = normalize(hi.pos - sph.pos);
+        hi.material = sph.material;
+    }
+    return hi;
 }
 
 HitInfo intersects(Ray ray){
     HitInfo hi;
-    hi.diffuseColor = vec3(0.);
+    hi.material.diffuseCol = vec3(0.);
 
-    float t = raySphereIntersect(ray, vec3(0., 0., 0.), 1.0);
-    if(t > 0.)
-            hi.diffuseColor = vec3(1.0);
+    for(int i = 0; i < numSpheres; i++){
+        HitInfo sphereHi = raySphereIntersect(ray, spheres[i]);
+        if(sphereHi.hit){
+            hi.material.diffuseCol = sphereHi.material.diffuseCol;
+            return hi;
+        }
+    }
 
     return hi;
 }
@@ -44,7 +78,7 @@ vec3 trace(Ray ray){
     vec3 col = vec3(0.);
 
     for(int i = 0; i < N_BOUNCES; i++){
-        col = intersects(ray).diffuseColor;
+        col = intersects(ray).material.diffuseCol;
     }
 
     return col;
@@ -65,7 +99,6 @@ void main() {
     cam.rd = vec3(uv, 1.3);
 
     vec3 finalCol = trace(cam);
-
-
+    
     imageStore(imgOutput, texelCoord, vec4(finalCol, 1.0));
 }

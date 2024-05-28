@@ -14,6 +14,7 @@ namespace rt {
         ComputeShader(const std::string &compPath);
         void use();
         void disuse();
+        void setUniform1i(const std::string& name, int i);
 
     private:
         GLuint compileShader(const char *compCode);
