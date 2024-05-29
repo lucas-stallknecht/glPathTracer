@@ -1,7 +1,7 @@
 #version 450 core
 
 
-#define BOUNCES 10
+#define BOUNCES 5
 #define RAYS_PER_PIXEL 1
 
 struct Ray{
@@ -94,16 +94,26 @@ vec3 trace(Ray ray, inout vec3 seed){
 
     for(int i = 0; i < BOUNCES; i++){
         HitInfo hi = intersects(ray);
-        if(!hi.hit)
+        if(!hi.hit){
+            vec3 skyColor = vec3(0.7, 0.8, 0.92);
+            incomingLight += skyColor * col;
+            incomingLight = clamp(incomingLight, 0.0, 1.0);
+            col *= skyColor;
             break;
-
+        }
+        // we assumed that emissiveCol is the same as diffuseCol for the emissive sphere
+        //                    emitted light                                 the lights will be tinted by all the objects
+        //                                                                  that have been hit so far (explaing the * col)
         incomingLight += (hi.material.diffuseCol * hi.material.emissiveStrength) * col;
         incomingLight = clamp(incomingLight, 0.0, 1.0);
         col *= hi.material.diffuseCol;
 
+
         Ray newRay;
         newRay.ro = hi.pos + hi.normal * 0.001;
-        newRay.rd = reflect(ray.rd, hi.normal + hi.material.roughness * randomVec3(seed));
+        vec3 diffuseDir = normalize(hi.normal + randomVec3(seed));
+        vec3 reflectionDir = reflect(ray.rd, hi.normal);
+        newRay.rd = mix(reflectionDir, diffuseDir, hi.material.roughness );
 
 
         ray = newRay;

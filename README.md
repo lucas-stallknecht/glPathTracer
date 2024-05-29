@@ -1,3 +1,12 @@
 # OpenGL PathTracer
 
-![image](https://github.com/lucas-stallknecht/glPathTracer/assets/124690694/833aa839-5519-4d68-998a-420c5aeeadb4)
+![img_1.png](img_1.png)
+
+TODO : 
+
+- [ ] Camera controls
+- [ ] Proper skybox
+- [ ] Scenes presets
+- [ ] Settings tweaking on left panel
+- [ ] Multiple rays per pixel
+- [ ] Clean and comment compute : SSBO Changes (Specular)
