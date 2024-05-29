@@ -51,4 +51,11 @@ namespace rt {
         }
     }
 
+    void ComputeShader::setUniform1f(const std::string& name, float f){
+        GLint index = glGetUniformLocation(m_program, name.c_str());
+        if(index > -1){
+            glUniform1f(index, f);
+        }
+    }
+
 } // lgl

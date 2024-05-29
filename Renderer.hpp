@@ -27,6 +27,7 @@ namespace rt {
         std::unique_ptr<ComputeShader> m_compShader;
         GLuint m_vao;
         GLuint m_rtTexture;
+        int m_frames = 0;
     };
 
 } // lgl

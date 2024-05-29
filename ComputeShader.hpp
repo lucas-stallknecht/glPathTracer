@@ -15,6 +15,7 @@ namespace rt {
         void use();
         void disuse();
         void setUniform1i(const std::string& name, int i);
+        void setUniform1f(const std::string& name, float f);
 
     private:
         GLuint compileShader(const char *compCode);

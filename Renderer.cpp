@@ -5,7 +5,7 @@
 #include "Renderer.hpp"
 #include "Shader.hpp"
 #include <iostream>
-#include <vector>
+#include <iterator>
 
 namespace rt {
 
@@ -62,53 +62,80 @@ namespace rt {
     }
 
     void Renderer::initRTSpheres() {
-        struct alignas(16) Material {
-            float difusseCol[3];
-            float emissiveCol[3];
+        struct Material {
+            float diffuseCol[3];
+            float emissiveStrength;
+            float roughness;
+            float padding[3];
         };
-        struct alignas(16) Sphere {
+        struct Sphere {
             float pos[3];
-            Material material;
             float radius;
-            float padding;
-        };
-        // Define spheres
-        std::vector<Sphere> spheres = {
-                {{0.0f, 0.0f, 0.0f}, {{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}}, 1.0f, 0.0f},
-                {{-1.0f, 0.5f, 0.0f},  {{0.0f, 1.0f, 0.0f},{0.0f, 0.0f, 0.0f}}, 1.5f, 0.0f}
-                // Add more spheres as needed
+            Material material;
         };
 
-        // NEED TO SWITCH TO SSBO
+        Sphere spheres[] = {
+                // small ball light
+                {
+                    {0.0f, 0.0f, 0.0f},
+                    0.3,
+                    {{1.0f, 1.0f, 0.5f}, 1.0, 1.0, {7.7,7.7,7.7}},
+                    },
+                // ground
+                {
+                    {0.0f, -20.0f, 0.0f},
+                        20.0,
+                        {{1.0f, 1.0f, 1.0f}, 0.0, 0.5, {7.7,7.7,7.7}},
+                },
+                // left ball
+                {
+                        {-0.55f, 0.38f, 0.2f},
+                        0.4,
+                        {{0.2f, 0.9f, 0.2f}, 0.0, 1.0, {7.7,7.7,7.7}},
+                },
+                // right ball
+                {
+                        {0.5f, 0.54f, 0.5f},
+                        0.6,
+                        {{1.0f, 0.3f, 0.3f}, 0.0, 0.05, {7.7,7.7,7.7}},
+                },
+                // Front light
+                {
+                        {0.6f, 1100.5, -1000.0f},
+                        1000,
+                        {{1.0f, 1.0f, 1.0f}, 1.0, 0.5, {7.7,7.7,7.7}},
+                },
+        };
 
-        GLuint ubo;
-        glGenBuffers(1, &ubo);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ubo);
-        std::cout << sizeof(Sphere);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(Sphere), spheres.data(), GL_STATIC_DRAW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ubo);
+        GLuint ssbo;
+        glGenBuffers(1, &ssbo);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+        std::cout << "Size of a material struct : " << sizeof(Material) << std::endl;
+        std::cout << "Size of sphere struct : " << sizeof(Sphere) << std::endl;
+        std::cout << "Size of spheres array : " << sizeof(spheres) << std::endl;
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(spheres), spheres, GL_STATIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo);
 
         m_compShader->use();
-        m_compShader->setUniform1i("numSpheres", spheres.size());
+        m_compShader->setUniform1i("numSpheres", std::size(spheres));
     }
 
     void Renderer::draw() {
+        m_frames++;
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+        glBindImageTexture(0, m_rtTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
         m_compShader->use();
+        m_compShader->setUniform1f("time", (float)glfwGetTime());
+        m_compShader->setUniform1i("frame", m_frames);
         glDispatchCompute((unsigned int)VP_WIDTH, (unsigned int)VP_HEIGHT, 1);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, m_rtTexture);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         m_shader->use();
         glBindVertexArray(m_vao);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, m_rtTexture);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-
-
-// make sure writing to image has finished before read
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 } // lgl
