@@ -7,4 +7,4 @@
 # Ray tracing in general
 
 - https://raytracing.github.io/
-- https://raytracing.github.io/books/RayTracingInOneWeekend.html
+- https://blog.demofox.org/2020/06/06/casual-shadertoy-path-tracing-2-image-improvement-and-glossy-reflections/

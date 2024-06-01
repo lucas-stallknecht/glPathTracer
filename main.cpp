@@ -1,5 +1,4 @@
 #include "App.hpp"
-
 int main()
 {
     rt::App app;

@@ -8,6 +8,7 @@
 #include "ComputeShader.hpp"
 #include <glad/glad.h>
 #include <GLFW//glfw3.h>
+#include <glm/glm.hpp>
 #include <memory>
 
 namespace rt {
@@ -15,8 +16,10 @@ namespace rt {
     class Renderer {
 
     public:
-        Renderer(int width, int height, int offset);
+        Renderer(int width, int height);
         void draw();
+        void updateCamera(glm::vec3 camPos, glm::vec3 camDir, glm::mat4 invProjection);
+        void resetAccumulation();
 
     private:
         void initQuadOutput();

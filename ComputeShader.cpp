@@ -58,4 +58,17 @@ namespace rt {
         }
     }
 
+    void ComputeShader::setUniformVec3(const std::string& name, glm::vec3 v){
+        GLint index = glGetUniformLocation(m_program, name.c_str());
+        if(index > -1){
+            glUniform3fv(index, 1, &v[0]);
+        }
+    }
+    void ComputeShader::setUniformMat4(const std::string& name, glm::mat4 m){
+        GLint index = glGetUniformLocation(m_program, name.c_str());
+        if(index > -1){
+            glUniformMatrix4fv(index, 1, GL_FALSE, &m[0][0]);
+        }
+    }
+
 } // lgl

@@ -4,17 +4,18 @@
 
 #include "Renderer.hpp"
 #include "Shader.hpp"
+#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <iterator>
 
 namespace rt {
 
-    Renderer::Renderer(int width, int height, int offset) : VP_WIDTH(width), VP_HEIGHT(height){
+    Renderer::Renderer(int width, int height) : VP_WIDTH(width), VP_HEIGHT(height){
         if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
             std::cout << "Failed to initialize GLAD" << std::endl;
             glfwTerminate();
         }
-        glViewport(offset, 0, VP_WIDTH, VP_HEIGHT);
+        glViewport(0, 0, VP_WIDTH, VP_HEIGHT);
 
         m_shader = std::make_unique<Shader>("../shaders/default.vert", "../shaders/default.frag");
         m_compShader = std::make_unique<ComputeShader>("../shaders/default.comp");
@@ -66,7 +67,8 @@ namespace rt {
             float diffuseCol[3];
             float emissiveStrength;
             float roughness;
-            float padding[3];
+            float metallic;
+            float padding[2];
         };
         struct Sphere {
             float pos[3];
@@ -79,25 +81,25 @@ namespace rt {
                 {
                     {-0.05f, 0.0f, 0.1f},
                     0.25,
-                    {{1.0f, 1.0f, 0.8f}, 1.0, 1.0, {7.7,7.7,7.7}},
+                    {{1.0f, 1.0f, 0.8f}, 1.0, 0.5, 0.0, {7.7,7.7}},
                     },
                 // ground
                 {
                     {0.0f, -20.0f, 0.0f},
                         20.0,
-                        {{0.7f, 0.7f, 0.7f}, 0.0, 1.0, {7.7,7.7,7.7}},
+                        {{1.0, 1.0, 0.8}, 0.0, 0.5, 0.0, {7.7,7.7}},
                 },
                 // left ball
                 {
                         {-0.55f, 0.41f, 0.2f},
                         0.4,
-                        {{0.2f, 0.9f, 0.2f}, 0.0, 0.7, {7.7,7.7,7.7}},
+                        {{0.2f, 0.9f, 0.2f}, 0.0, 1.0, 0.0, {7.7,7.7}},
                 },
                 // right ball
                 {
                         {0.5f, 0.59f, 0.5f},
                         0.6,
-                        {{1.0f, 0.3f, 0.3f}, 0.0, 0.5, {7.7,7.7,7.7}},
+                        {{1.0f, 0.3f, 0.3f}, 0.0, 0.05, 1.0, {7.7,7.7}},
                 },
         };
 
@@ -114,10 +116,25 @@ namespace rt {
         m_compShader->setUniform1i("numSpheres", std::size(spheres));
     }
 
+    void Renderer::updateCamera(glm::vec3 camPos, glm::vec3 camDir, glm::mat4 invProjection){
+        m_compShader->use();
+
+        glm::mat4 view = glm::lookAt(camPos, camPos + camDir, glm::vec3(0, 1, 0));
+        glm::mat4 invView = glm::inverse(view);
+
+        m_compShader->setUniformVec3("camPos", camPos);
+        m_compShader->setUniformMat4("invView", invView);
+        m_compShader->setUniformMat4("invProjection", invProjection);
+    }
+
+    void Renderer::resetAccumulation() {
+        m_frames = 0;
+    }
+
     void Renderer::draw() {
         m_frames++;
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT);
         glBindImageTexture(0, m_rtTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
         m_compShader->use();
         m_compShader->setUniform1f("time", (float)glfwGetTime());

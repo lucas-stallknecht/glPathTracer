@@ -9,6 +9,12 @@ add_executable(LearnOpenGL main.cpp
         Renderer.cpp
         Shader.cpp
         ComputeShader.cpp
+        Camera.cpp
+        Camera.hpp
+)
+
+include_directories(
+        C:/Users/Dusha/Documents/Libraries
 )
 
 include_directories(
