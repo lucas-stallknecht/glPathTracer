@@ -8,6 +8,7 @@
 #include "Camera.hpp"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include "imgui.h"
 #include <memory>
 
 namespace rt {
@@ -31,6 +32,8 @@ namespace rt {
         bool m_focused = false;
         bool m_firstMouse = true;
         glm::vec2 m_lastMousePosition = glm::vec2();
+        ImGuiIO *m_io;
+
 
         void keyCallback(GLFWwindow* window, int key);
         void mouseCallback(GLFWwindow* window, float xpos, float ypos);

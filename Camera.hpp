@@ -8,8 +8,8 @@ namespace rt {
 
     class Camera {
 
-        static constexpr float CAM_MOV_SPEED = 0.05f;
-        static constexpr float CAM_VIEW_SPEED = 0.0025f;
+        static constexpr float CAM_MOV_SPEED = 2.0f;
+        static constexpr float CAM_VIEW_SPEED = 0.05f;
 
     public:
         glm::vec3 m_camPos = glm::vec3(0.0f, 0.0f, -5.0f);
@@ -18,11 +18,11 @@ namespace rt {
 
         Camera(double fov, int width, int height, float near, float far);
 
-        void moveForward();
-        void moveBackward();
-        void moveLeft();
-        void moveRight();
-        void updateCamDirection(float xoffset, float yoffset);
+        void moveForward(float deltaTime);
+        void moveBackward(float deltaTime);
+        void moveLeft(float deltaTime);
+        void moveRight(float deltaTime);
+        void updateCamDirection(float xoffset, float yoffset, float deltaTime);
     };
 
 } // rt

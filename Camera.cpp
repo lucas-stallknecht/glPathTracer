@@ -16,25 +16,25 @@ namespace rt {
         m_InvProjection = glm::inverse(projection);
     }
 
-    void Camera::moveForward() {
-        m_camPos += m_camDir * CAM_MOV_SPEED;
+    void Camera::moveForward(float deltaTime) {
+        m_camPos += m_camDir * CAM_MOV_SPEED * deltaTime;
     }
 
-    void Camera::moveBackward() {
-        m_camPos -= m_camDir * CAM_MOV_SPEED;
+    void Camera::moveBackward(float deltaTime) {
+        m_camPos -= m_camDir * CAM_MOV_SPEED * deltaTime;
     }
 
-    void Camera::moveLeft() {
-        m_camPos -= glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED;
+    void Camera::moveLeft(float deltaTime) {
+        m_camPos -= glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED * deltaTime;
     }
 
-    void Camera::moveRight() {
-        m_camPos += glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED;
+    void Camera::moveRight(float deltaTime) {
+        m_camPos += glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED * deltaTime;
     }
 
-    void Camera::updateCamDirection(float deltax, float deltay){
-        float pitchDelta = deltay * CAM_VIEW_SPEED;
-        float yawDelta = deltax * CAM_VIEW_SPEED;
+    void Camera::updateCamDirection(float deltax, float deltay, float deltaTime){
+        float pitchDelta = deltay * CAM_VIEW_SPEED * deltaTime;
+        float yawDelta = deltax * CAM_VIEW_SPEED * deltaTime;
 
         glm::vec3 rightDirection = glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f));
 
