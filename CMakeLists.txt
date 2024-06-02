@@ -1,49 +1,31 @@
 cmake_minimum_required(VERSION 3.28)
-project(glPathTracer)
+project(glPathTracer VERSION 1.0)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+set(PROJECT_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
-set(IMGUI_DIR C:/Users/Dusha/Documents/glPathTracer/libs/imgui)
-set(IMGUI_SOURCES
-        ${IMGUI_DIR}/imgui.cpp
-        ${IMGUI_DIR}/imgui_draw.cpp
-        ${IMGUI_DIR}/imgui_widgets.cpp
-        ${IMGUI_DIR}/imgui_tables.cpp
-        ${IMGUI_DIR}/imgui_demo.cpp
-        ${IMGUI_DIR}/imgui_impl_glfw.cpp
-        ${IMGUI_DIR}/imgui_impl_opengl3.cpp
+set(LIBS_DIR "${PROJECT_ROOT_DIR}/libs")
+set(SOURCE_DIR "${PROJECT_ROOT_DIR}/src")
+
+file(GLOB_RECURSE SOURCES
+        "${SOURCE_DIR}/*.cpp"
+        "${SOURCE_DIR}/*.c"
 )
 
-add_executable(glPathTracer main.cpp
-        glad.c
-        App.cpp
-        Renderer.cpp
-        Shader.cpp
-        ComputeShader.cpp
-        Camera.cpp
-        Camera.hpp
-        ${IMGUI_SOURCES}
+add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+        ${LIBS_DIR}
+        ${LIBS_DIR}/glfw-3.4.bin.WIN64/include
+        ${LIBS_DIR}/glad/include
+        ${LIBS_DIR}/imgui
 )
 
-include_directories(
-        C:/Users/Dusha/Documents/Libraries
+target_link_libraries(${PROJECT_NAME} PRIVATE
+        ${LIBS_DIR}/glfw-3.4.bin.WIN64/lib-vc2022/glfw3.lib
 )
 
-include_directories(
-        C:/Users/Dusha/Documents/Libraries/glfw-3.4.bin.WIN64/include/
-)
-target_link_libraries(glPathTracer
-        C:/Users/Dusha/Documents/Libraries/glfw-3.4.bin.WIN64/lib-vc2022/glfw3.lib
-)
-
-include_directories(
-        C:/Users/Dusha/Documents/Libraries/glad/include
-)
-
-include_directories(
-        C:/Users/Dusha/Documents/glPathTracer/libs/imgui
-)
-
-
-
+message(STATUS "Project root: ${PROJECT_ROOT_DIR}")
+message(STATUS "Source files: ${SOURCES}")

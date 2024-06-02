@@ -11,5 +11,4 @@ TODO :
 - [ ] ImGUI 1/2
 - [ ] Proper skybox
 - [ ] Scenes presets
-- [ ] Scenes presets
 - [ ] Clean and comment compute shader (ie : u_ before uniforms)
