@@ -1,7 +1,8 @@
 #version 450 core
 
-#define BOUNCES 10
-#define RAYS_PER_PIXEL 1
+#define BOUNCES 5
+#define RAYS_PER_PIXEL 3
+#define PI 3.14159265359f
 
 struct Ray {
     vec3 ro;
@@ -10,8 +11,8 @@ struct Ray {
 struct Material {
     vec3 diffuseCol; // 12
     float emissiveStrength; // 4
-    float roughness;
-    float metallic;
+    float roughness; // 4
+    float specularPerc; // 4
 };
 struct HitInfo {
     bool hit;
@@ -25,7 +26,13 @@ struct Sphere {
     vec3 pos;           // 12               // 0
     float rad;          // 4               // 12
     Material material;  // 16               // 16
-};// 32 bytes total after auto padding
+};// 32 bytes
+struct Triangle {
+    vec3 v0;
+    vec3 v1;
+    vec3 v2;
+    Material material;
+}; // 12*3 + 16 = 52 bytes total
 
 
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -41,17 +48,83 @@ uniform vec3 camPos;
 uniform mat4 invView;
 uniform mat4 invProjection;
 
-float hash(vec3 p) {
-    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
+
+// ========= TEST BOX =========
+Triangle[12] buildTestBox(){
+    Material grayMat;
+    grayMat.diffuseCol = vec3(0.7, 0.7, 0.7);
+    grayMat.emissiveStrength = 0.0;
+    grayMat.roughness = 1.0;
+    Material redMat;
+    redMat.diffuseCol = vec3(0.7, 0.1, 0.1);
+    redMat.emissiveStrength = 0.0;
+    redMat.roughness = 0.8;
+    Material greenMat;
+    greenMat.diffuseCol = vec3(0.1, 0.7, 0.1);
+    greenMat.emissiveStrength = 0.0;
+    greenMat.roughness = 0.8;
+    Material lightMat;
+    lightMat.diffuseCol = vec3(1.0, 1.0, 1.0);
+    lightMat.emissiveStrength = 5.0;
+    lightMat.roughness = 1.0;
+
+    Triangle triangles[12];
+    // Floor
+    triangles[0] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0), grayMat);
+    triangles[1] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0), vec3(-1.0, -1.0, 1.0), grayMat);
+
+    // Ceiling
+    triangles[2] = Triangle(vec3(-1.0, 1.0, -1.0), vec3(1.0, 1.0, -1.0), vec3(1.0, 1.0, 1.0), grayMat);
+    triangles[3] = Triangle(vec3(-1.0, 1.0, -1.0), vec3(1.0, 1.0, 1.0), vec3(-1.0, 1.0, 1.0), grayMat);
+
+    // Back wall
+    triangles[4] = Triangle(vec3(-1.0, -1.0, 1.0), vec3(1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0), grayMat);
+    triangles[5] = Triangle(vec3(-1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0), vec3(-1.0, 1.0, 1.0), grayMat);
+
+    // Left wall (red)
+    triangles[6] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(-1.0, -1.0, 1.0), vec3(-1.0, 1.0, 1.0), redMat);
+    triangles[7] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(-1.0, 1.0, 1.0), vec3(-1.0, 1.0, -1.0), redMat);
+
+    // Right wall (green)
+    triangles[8] = Triangle(vec3(1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0), greenMat);
+    triangles[9] = Triangle(vec3(1.0, -1.0, -1.0), vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, -1.0), greenMat);
+
+    triangles[10] = Triangle(vec3(-0.5, 0.99, -0.5), vec3(0.5, 0.99, -0.5), vec3(0.5, 0.99, 0.5), lightMat);
+    triangles[11] = Triangle(vec3(-0.5, 0.99, -0.5), vec3(0.5, 0.99, 0.5), vec3(-0.5, 0.99, 0.5), lightMat);
+
+    return triangles;
 }
 
-// Function to generate a random vec3 between -range and range
-vec3 randomVec3(vec3 seed, float range) {
-    return vec3(hash(seed + vec3(1.0, 0.0, 0.0)),
-                hash(seed + vec3(0.0, 1.0, 0.0)),
-                hash(seed + vec3(0.0, 0.0, 1.0))) - range;
+
+// ========= RANDOM FUNCTIONS =========
+uint wang_hash(inout uint seed)
+{
+    seed = uint(seed ^ uint(61)) ^ uint(seed >> uint(16));
+    seed *= uint(9);
+    seed = seed ^ (seed >> 4);
+    seed *= uint(0x27d4eb2d);
+    seed = seed ^ (seed >> 15);
+    return seed;
 }
 
+float randomFloat01(inout uint state)
+{
+    return float(wang_hash(state)) / 4294967296.0;
+}
+
+vec3 randomUnitVector(inout uint state)
+{
+    float z = randomFloat01(state) * 2.0f - 1.0f;
+    float a = randomFloat01(state) * 2.0 * PI;
+    float r = sqrt(1.0f - z * z);
+    float x = r * cos(a);
+    float y = r * sin(a);
+    return vec3(x, y, z);
+}
+// ====================================
+
+
+// ========= RAY SURFACE =========
 HitInfo raySphereIntersect(Ray ray, Sphere sph) {
     HitInfo hi;
     hi.hit = false;
@@ -77,10 +150,46 @@ HitInfo raySphereIntersect(Ray ray, Sphere sph) {
     return hi;
 }
 
+HitInfo rayTriangleIntersect(Ray ray, Triangle tri) {
+    HitInfo hi;
+    hi.hit = false;
+    hi.dist = -1.0;
+
+    vec3 v1v0 = tri.v1 - tri.v0;
+    vec3 v2v0 = tri.v2 - tri.v0;
+    vec3 rov0 = ray.ro - tri.v0;
+    vec3 n = cross(v1v0, v2v0);
+
+    // Check if the normal is facing the correct direction
+
+    vec3 q = cross(rov0, ray.rd);
+    float d = 1.0 / dot(ray.rd, n);
+    float u = d * dot(-q, v2v0);
+    float v = d * dot(q, v1v0);
+    float t = d * dot(-n, rov0);
+
+    if (u >= 0.0 && v >= 0.0 && (u + v) <= 1.0 && t > 0.0) {
+        hi.hit = true;
+        hi.dist = t;
+        hi.pos = ray.ro + ray.rd * t;
+        if (dot(n, ray.rd) > 0.0) {
+            n = -n;  // Flip the normal if it's not facing the ray origin
+        }
+        hi.normal = normalize(n);
+        hi.material = tri.material;
+    }
+
+    return hi;
+}
+// ====================================
+
+
 HitInfo intersects(Ray ray) {
     HitInfo hi;
     hi.hit = false;
     hi.normal = ray.rd;
+
+    Triangle box[12] = buildTestBox();
 
     for (int i = 0; i < numSpheres; i++) {
         HitInfo sphereHi = raySphereIntersect(ray, spheres[i]);
@@ -88,68 +197,42 @@ HitInfo intersects(Ray ray) {
             hi = sphereHi;
         }
     }
+    for (int i = 0; i < 12; i++) {
+        HitInfo triangleHi = rayTriangleIntersect(ray, box[i]);
+        if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
+            hi = triangleHi;
+        }
+    }
 
     return hi;
 }
 
-vec3 trace(Ray ray, inout vec3 seed) {
-    vec3 col = vec3(1.);
-    vec3 incomingLight = vec3(0.);
+vec3 trace(Ray ray, inout uint seed) {
+    vec3 rayCol = vec3(1.);
+    vec3 pixelColor = vec3(0.);
 
     for (int i = 0; i < BOUNCES; i++) {
         HitInfo hi = intersects(ray);
         if (!hi.hit) {
-            vec3 zenithColor  = vec3(0.0, 0.749, 1.0);
-            vec3 horizonColor  = vec3(0.529, 0.808, 0.922);
-            float perc = dot(vec3(0.0, 1.0, 0.0), hi.normal);
-            vec3 skyCol = mix(horizonColor, zenithColor, clamp(perc, 0.0, 1.0));
-            incomingLight += vec3(0.3) * col;
-            incomingLight = clamp(incomingLight, 0.0, 1.0);
             break;
         }
         // we assumed that emissiveCol is the same as diffuseCol for the emissive sphere
         //                    emitted light                                 the lights will be tinted by all the objects
         //                                                                  that have been hit so far (explaing the * col)
-        incomingLight += (hi.material.diffuseCol * hi.material.emissiveStrength) * col;
-        incomingLight = clamp(incomingLight, 0.0, 1.0);
-        col *= hi.material.diffuseCol;
-
+        pixelColor += (hi.material.diffuseCol * hi.material.emissiveStrength) * rayCol;
+        rayCol *= hi.material.diffuseCol;
 
         Ray newRay;
         newRay.ro = hi.pos + hi.normal * 0.001;
-        vec3 diffuseDir = normalize(hi.normal + randomVec3(seed, 0.5));
+        vec3 diffuseDir = normalize(hi.normal +  randomUnitVector(seed));
         vec3 specularReflectionDir = reflect(ray.rd, hi.normal);
-
         newRay.rd = mix(specularReflectionDir, diffuseDir, hi.material.roughness);
-
-
-
 
         ray = newRay;
     }
 
-    return incomingLight;
+    return pixelColor;
 }
-
-mat3 Pitch(float a) {
-    float Sin = sin(a);
-    float Cos = cos(a);
-
-    return mat3(1, 0, 0,
-                0, Cos, -Sin,
-                0, Sin, Cos);
-}
-
-mat3 Yaw(float a) {
-    float Sin = sin(a);
-    float Cos = cos(a);
-
-    return mat3(Cos, 0, Sin,
-                0, 1, 0,
-                -Sin, 0, Cos);
-}
-
-
 
 void main() {
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
@@ -159,7 +242,7 @@ void main() {
     uv.y = (float(texelCoord.y) - .5 * gl_NumWorkGroups.y);
     uv /= gl_NumWorkGroups.xy;
 
-    vec3 seed = vec3(uv, time);
+    uint seed =  uint(uint(texelCoord.x) * uint(1973) + uint(texelCoord.y) * uint(9277) + uint(frame) * uint(26699)) | uint(1);
 
     Ray cam;
     cam.ro = camPos;
@@ -167,11 +250,14 @@ void main() {
     vec3 normalizedTarget = normalize(vec3(target) / target.w);
     cam.rd = vec3(invView * vec4(normalizedTarget, 0.0));
 
-    vec3 col = trace(cam, seed);
+    vec3 col;
+    for(int i = 0; i < RAYS_PER_PIXEL; i++){
+        col += trace(cam, seed) / float(RAYS_PER_PIXEL);
+    }
 
-    float weight = 1.0 / (frame + 1);
     vec3 colPrev = imageLoad(imgOutput, texelCoord).rgb;
-    vec3 finalCol = clamp(colPrev * (1 - weight) + col * weight, 0.0, 1.0);
+    col = mix(colPrev, col, 1.0 / (float(frame) + 1));
 
-    imageStore(imgOutput, texelCoord, vec4(finalCol, 1.0));
+
+    imageStore(imgOutput, texelCoord, vec4(col, 1.0));
 }

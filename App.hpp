@@ -26,7 +26,7 @@ namespace rt {
     private:
         GLFWwindow *m_window;
         std::unique_ptr<Renderer> m_renderer;
-        Camera m_cam{45.0, LAYOUT_WIDTH, HEIGHT, 0.1, 100.0};
+        Camera m_cam{50.0, LAYOUT_WIDTH, HEIGHT, 0.1, 100.0};
         bool *m_keysArePressed;
         bool m_focused = false;
         bool m_firstMouse = true;

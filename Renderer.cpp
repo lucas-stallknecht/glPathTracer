@@ -67,7 +67,7 @@ namespace rt {
             float diffuseCol[3];
             float emissiveStrength;
             float roughness;
-            float metallic;
+            float specularPerc;
             float padding[2];
         };
         struct Sphere {
@@ -77,30 +77,25 @@ namespace rt {
         };
 
         Sphere spheres[] = {
-                // small ball light
-                {
-                    {-0.05f, 0.0f, 0.1f},
-                    0.25,
-                    {{1.0f, 1.0f, 0.8f}, 1.0, 0.5, 0.0, {7.7,7.7}},
-                    },
-                // ground
-                {
-                    {0.0f, -20.0f, 0.0f},
-                        20.0,
-                        {{1.0, 1.0, 0.8}, 0.0, 0.5, 0.0, {7.7,7.7}},
-                },
                 // left ball
                 {
-                        {-0.55f, 0.41f, 0.2f},
-                        0.4,
-                        {{0.2f, 0.9f, 0.2f}, 0.0, 1.0, 0.0, {7.7,7.7}},
+                        {-0.7f, 0.0f, 0.0f},
+                        0.2,
+                        {{0.9f, 0.9f, 0.9f}, 0.0, 1.0, 0.0, {7.7,7.7}},
+                },
+                // middle ball
+                {
+                        {0.0f, 0.0f, 0.0f},
+                        0.2,
+                        {{0.9f, 0.9f, 0.9f}, 0.0, 0.5, 0.0, {7.7,7.7}},
                 },
                 // right ball
                 {
-                        {0.5f, 0.59f, 0.5f},
-                        0.6,
-                        {{1.0f, 0.3f, 0.3f}, 0.0, 0.05, 1.0, {7.7,7.7}},
+                        {0.7f, 0.0f, 0.0f},
+                        0.2,
+                        {{0.9f, 0.9f, 0.9f}, 0.0, 0.0, 0.0, {7.7,7.7}},
                 },
+
         };
 
         GLuint ssbo;
@@ -140,7 +135,6 @@ namespace rt {
         m_compShader->setUniform1f("time", (float)glfwGetTime());
         m_compShader->setUniform1i("frame", m_frames);
         glDispatchCompute((unsigned int)VP_WIDTH, (unsigned int)VP_HEIGHT, 1);
-
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         m_shader->use();

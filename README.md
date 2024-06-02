@@ -1,12 +1,12 @@
 # OpenGL PathTracer
 
-![img_1.png](img_1.png)
-
 TODO : 
 
-- [ ] Camera controls
+- [x] Camera controls
+- [x] Quads (stored in compute shader only)
+- [ ] Material glossy effect
+- [ ] ImGUI
+- [x] Multiple rays per pixel
 - [ ] Proper skybox
 - [ ] Scenes presets
-- [ ] Settings tweaking on left panel
-- [ ] Multiple rays per pixel
-- [ ] Clean and comment compute : SSBO Changes (Specular)
+- [ ] Clean and comment compute shader (ie : u_ before uniforms)
