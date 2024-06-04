@@ -43,7 +43,7 @@ namespace rt {
 
 
 
-        initModel("../resources/icosphere.obj");
+        initModel("../resources/suzanne.obj");
     }
 
     void Renderer::initQuadOutput() {
@@ -126,9 +126,11 @@ namespace rt {
 
         struct Triangle{
             objl::Vector3 v0;
+            float padding1;
             objl::Vector3 v1;
+            float padding2;
             objl::Vector3 v2;
-            int padding;
+            float padding3;
             Material material;
         };
 
@@ -137,8 +139,8 @@ namespace rt {
 
         Material glowingTest{
                 {0.9f, 0.9f, 0.9f},
-                1.0,
                 0.0,
+                1.0,
                 1.0,
                 {7.7,7.7}
         };
@@ -182,7 +184,7 @@ namespace rt {
 
     void Renderer::draw() {
 
-        static int bounces = 5, samples = 1;
+        static int bounces = 2, samples = 1;
         bool change = false;
         change |= ImGui::InputInt("Bounces", &bounces, 1, 2);
         change |= ImGui::InputInt("Samples", &samples);

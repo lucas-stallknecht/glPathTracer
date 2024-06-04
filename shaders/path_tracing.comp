@@ -38,7 +38,7 @@ struct Triangle {
     vec3 v2;
     int padding;
     Material material;
-};                      // 12*3 + 4 + 32 = 72 bytes total
+};                      // 12*3 + 4*3 + 32 = 80 bytes total
 
 
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
