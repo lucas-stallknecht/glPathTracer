@@ -8,6 +8,7 @@
 #include <iostream>
 #include <iterator>
 #include "imgui.h"
+#include "OBJ_Loader.h"
 
 namespace rt {
 
@@ -23,8 +24,26 @@ namespace rt {
 
         glGenVertexArrays(1, &m_vao);
         glBindVertexArray(m_vao);
+        glGenBuffers(1, &m_ssbo);
         initQuadOutput();
-        initRTSpheres();
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
+        std::cout << "Size of a material struct : " << sizeof(Material) << std::endl;
+
+
+        std::vector<Sphere> spheres = initRTSpheres();
+        std::cout << "Size of sphere struct : " << sizeof(Sphere) << std::endl;
+        std::cout << "Size of spheres vector : " << spheres.size() * sizeof(Sphere) << std::endl;
+//        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_ssbo);
+//        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, spheres.size() * sizeof(Sphere), spheres.data());
+
+        m_compShader->use();
+        m_compShader->setUniform1i("numSpheres", spheres.size());
+
+
+
+
+        initModel("../resources/icosphere.obj");
     }
 
     void Renderer::initQuadOutput() {
@@ -63,19 +82,7 @@ namespace rt {
         glBindTexture(GL_TEXTURE_2D, m_rtTexture);
     }
 
-    void Renderer::initRTSpheres() {
-        struct Material {
-            float diffuseCol[3];
-            float emissiveStrength;
-            float roughness;
-            float specularPerc;
-            float padding[2];
-        };
-        struct Sphere {
-            float pos[3];
-            float radius;
-            Material material;
-        };
+    std::vector<Sphere> Renderer::initRTSpheres() {
 
         Sphere spheres[] = {
                 // right ball
@@ -104,18 +111,59 @@ namespace rt {
 
         };
 
-        GLuint ssbo;
-        glGenBuffers(1, &ssbo);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-        std::cout << "Size of a material struct : " << sizeof(Material) << std::endl;
-        std::cout << "Size of sphere struct : " << sizeof(Sphere) << std::endl;
-        std::cout << "Size of spheres array : " << sizeof(spheres) << std::endl;
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(spheres), spheres, GL_STATIC_DRAW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo);
+        std::vector<Sphere> spheresVec;
+        for(auto sph: spheres){
+            spheresVec.push_back(sph);
+        }
+        std::cout << spheresVec.size() << std::endl;
+        return spheresVec;
+    };
+
+    void Renderer::initModel(const std::string &modelPath) {
+        objl::Loader loader;
+        loader.LoadFile(modelPath);
+        std::cout << loader.LoadedMeshes[0].MeshName << std::endl;
+
+        struct Triangle{
+            objl::Vector3 v0;
+            objl::Vector3 v1;
+            objl::Vector3 v2;
+            int padding;
+            Material material;
+        };
+
+        unsigned int numTriangles = loader.LoadedMeshes[0].Indices.size()/3;
+        std::vector<Triangle> triangles(numTriangles);
+
+        Material glowingTest{
+                {0.9f, 0.9f, 0.9f},
+                1.0,
+                0.0,
+                1.0,
+                {7.7,7.7}
+        };
+
+        for(int i=0; i < numTriangles; i++){
+            triangles[i].v0 = loader.LoadedMeshes[0].Vertices[loader.LoadedMeshes[0].Indices[i*3 + 0]].Position;
+            triangles[i].v1 = loader.LoadedMeshes[0].Vertices[loader.LoadedMeshes[0].Indices[i*3 + 1]].Position;
+            triangles[i].v2 = loader.LoadedMeshes[0].Vertices[loader.LoadedMeshes[0].Indices[i*3 + 2]].Position;
+            triangles[i].material = glowingTest;
+        }
+        for(auto tri: triangles){
+            std::cout << tri.v0.X << ' ' << tri.v0.Y << ' ' << tri.v0.Z << std::endl;
+        }
+
+        // glBufferData(GL_SHADER_STORAGE_BUFFER, 192+1440, nullptr, GL_STATIC_DRAW);
+        std::cout << "Size of objl::Vector3 : " << sizeof(objl::Vector3) << std::endl;
+        std::cout << "Size of triangle struct : " << sizeof(Triangle) << std::endl;
+        std::cout << "Size of triangles vector : " << triangles.size() * sizeof(Triangle) << std::endl;
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_ssbo);
+        // glBufferSubData(GL_SHADER_STORAGE_BUFFER, 192, triangles.size() * sizeof(Triangle), triangles.data());
+        glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), triangles.data(), GL_STATIC_DRAW);
 
         m_compShader->use();
-        m_compShader->setUniform1i("numSpheres", std::size(spheres));
-    }
+        m_compShader->setUniform1i("numTriangles", triangles.size());
+    };
 
     void Renderer::updateCamera(glm::vec3 camPos, glm::vec3 camDir, glm::mat4 invProjection){
         m_compShader->use();

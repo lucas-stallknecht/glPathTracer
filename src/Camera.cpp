@@ -12,7 +12,7 @@ namespace rt {
 
     Camera::Camera(double fov, int width, int height, float near, float far) {
 
-        glm::mat4 projection = glm::perspectiveFov(glm::radians(fov), (double)1280,  (double)720, 0.1, 1000.0);
+        glm::mat4 projection = glm::perspectiveFov(glm::radians(fov), (double)width,  (double)height, (double)near, (double)far);
         m_InvProjection = glm::inverse(projection);
     }
 

@@ -15,7 +15,7 @@ namespace rt {
 
     class App {
 
-        static constexpr int LAYOUT_WIDTH = 1280;
+        static constexpr int LAYOUT_WIDTH = 1000;
         static constexpr int HEIGHT = 720;
 
     public:
