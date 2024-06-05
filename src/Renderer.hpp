@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 
+
 namespace rt {
 
     struct Material {

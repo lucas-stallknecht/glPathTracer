@@ -2,7 +2,7 @@
 
 //#define BOUNCES 10
 //#define RAYS_PER_PIXEL 1
-#define JITTER 0.000
+//#define JITTER 0.000
 #define PI 3.14159265359f
 
 struct Material {
@@ -26,7 +26,7 @@ struct HitInfo {
 };
 
 struct Sphere {
-                        // base alignment   // aligned offset
+    // base alignment   // aligned offset
     vec3 pos;           // 12               // 0
     float rad;          // 4               // 12
     Material material;  // 32               // 16
@@ -41,7 +41,7 @@ struct Triangle {
 };                      // 12*3 + 4*3 + 32 = 80 bytes total
 
 
-layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout (rgba32f, binding = 0) uniform image2D imgOutput;
 
 layout (std430, binding = 1) readonly buffer spheresBuffer {
@@ -55,6 +55,7 @@ layout (std430, binding = 2) readonly buffer trianglesBuffer {
 uniform int frame;
 uniform int BOUNCES;
 uniform int RAYS_PER_PIXEL;
+uniform float JITTER;
 // Cam uniforms
 uniform vec3 camPos;
 uniform mat4 invView;
@@ -69,31 +70,31 @@ Triangle[12] buildTestBox() {
     Material grayMat = Material(vec3(0.7, 0.7, 0.7), 0.0, 0.7, 0.5);
     Material redMat = Material(vec3(0.7, 0.1, 0.1), 0.0, 0.7, 0.5);
     Material greenMat = Material(vec3(0.1, 0.7, 0.1), 0.0, 0.7, 0.5);
-    Material lightMat = Material(vec3(1.0, 1.0, 1.0), 5.0, 0.7, 0.5);
+    Material lightMat = Material(vec3(1.0, 1.0, 1.0), 8.0, 0.7, 0.5);
 
     Triangle triangles[12];
     // Floor
-    triangles[0] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0),9, grayMat);
-    triangles[1] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0), vec3(-1.0, -1.0, 1.0),9, grayMat);
+    triangles[0] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0), 9, grayMat);
+    triangles[1] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0), vec3(-1.0, -1.0, 1.0), 9, grayMat);
 
     // Ceiling
-    triangles[2] = Triangle(vec3(-1.0, 1.0, -1.0), vec3(1.0, 1.0, -1.0), vec3(1.0, 1.0, 1.0),9, grayMat);
-    triangles[3] = Triangle(vec3(-1.0, 1.0, -1.0), vec3(1.0, 1.0, 1.0), vec3(-1.0, 1.0, 1.0),9, grayMat);
+    triangles[2] = Triangle(vec3(-1.0, 1.0, -1.0), vec3(1.0, 1.0, -1.0), vec3(1.0, 1.0, 1.0), 9, grayMat);
+    triangles[3] = Triangle(vec3(-1.0, 1.0, -1.0), vec3(1.0, 1.0, 1.0), vec3(-1.0, 1.0, 1.0), 9, grayMat);
 
     // Back wall
-    triangles[4] = Triangle(vec3(-1.0, -1.0, 1.0), vec3(1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0),9, grayMat);
-    triangles[5] = Triangle(vec3(-1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0), vec3(-1.0, 1.0, 1.0),9, grayMat);
+    triangles[4] = Triangle(vec3(-1.0, -1.0, 1.0), vec3(1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0), 9, grayMat);
+    triangles[5] = Triangle(vec3(-1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0), vec3(-1.0, 1.0, 1.0), 9, grayMat);
 
     // Left wall (red)
-    triangles[6] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(-1.0, -1.0, 1.0), vec3(-1.0, 1.0, 1.0),9, redMat);
-    triangles[7] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(-1.0, 1.0, 1.0), vec3(-1.0, 1.0, -1.0),9, redMat);
+    triangles[6] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(-1.0, -1.0, 1.0), vec3(-1.0, 1.0, 1.0), 9, redMat);
+    triangles[7] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(-1.0, 1.0, 1.0), vec3(-1.0, 1.0, -1.0), 9, redMat);
 
     // Right wall (green)
-    triangles[8] = Triangle(vec3(1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0),9, greenMat);
-    triangles[9] = Triangle(vec3(1.0, -1.0, -1.0), vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, -1.0),9, greenMat);
+    triangles[8] = Triangle(vec3(1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0), 9, greenMat);
+    triangles[9] = Triangle(vec3(1.0, -1.0, -1.0), vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, -1.0), 9, greenMat);
 
-    triangles[10] = Triangle(vec3(-0.5, 0.99, -0.5), vec3(0.5, 0.99, -0.5), vec3(0.5, 0.99, 0.5),9, lightMat);
-    triangles[11] = Triangle(vec3(-0.5, 0.99, -0.5), vec3(0.5, 0.99, 0.5), vec3(-0.5, 0.99, 0.5),9, lightMat);
+    triangles[10] = Triangle(vec3(-0.5, 0.99, -0.5), vec3(0.5, 0.99, -0.5), vec3(0.5, 0.99, 0.5), 9, lightMat);
+    triangles[11] = Triangle(vec3(-0.5, 0.99, -0.5), vec3(0.5, 0.99, 0.5), vec3(-0.5, 0.99, 0.5), 9, lightMat);
 
     return triangles;
 }
@@ -179,6 +180,20 @@ HitInfo rayTriangleIntersect(Ray ray, Triangle tri) {
 
     return hi;
 }
+
+
+bool boxIntersection(Ray ray, vec3 boxSize)
+{
+    vec3 m = 1.0 / ray.rd; // can precompute if traversing a set of aligned boxes
+    vec3 n = m * ray.ro;   // can precompute if traversing a set of aligned boxes
+    vec3 k = abs(m) * boxSize;
+    vec3 t1 = -n - k;
+    vec3 t2 = -n + k;
+    float tN = max(max(t1.x, t1.y), t1.z);
+    float tF = min(min(t2.x, t2.y), t2.z);
+    if (tN > tF || tF < 0.0) return false; // no intersection
+    return true;
+}
 // ====================================
 
 
@@ -201,12 +216,14 @@ HitInfo intersects(Ray ray) {
         }
     }
 
-    for (int i = 0; i < numTriangles; i++) {
-        HitInfo triangleHi = rayTriangleIntersect(ray, triangles[i]);
-        if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
-            hi = triangleHi;
+    bool monkeyBoundingBox = boxIntersection(ray, vec3(0.5));
+    if(monkeyBoundingBox)
+        for (int i = 0; i < numTriangles; i++) {
+            HitInfo triangleHi = rayTriangleIntersect(ray, triangles[i]);
+            if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
+                hi = triangleHi;
+            }
         }
-    }
 
     return hi;
 }
@@ -238,6 +255,17 @@ vec3 trace(Ray ray, inout uint seed) {
         float shouldSpecular = (randomFloat01(seed) < hi.material.specularPerc) ? 1.0f : 0.0f;
         newRay.rd = normalize(mix(diffuseDir, specularReflectionDir, shouldSpecular));
 
+
+
+        // early stoppage
+        // https://blog.demofox.org/2020/06/06/casual-shadertoy-path-tracing-2-image-improvement-and-glossy-reflections/
+        float p = max(rayCol.r, max(rayCol.g, rayCol.b));
+        if (randomFloat01(seed) > p)
+        break;
+        // Add the energy we 'lose' by randomly terminating paths
+        rayCol *= 1.0f / p;
+
+
         ray = newRay;
     }
 
@@ -248,9 +276,9 @@ void main() {
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
     // Here gl_NumWorkGroups is basically resolution
     vec2 uv;
-    uv.x = (float(texelCoord.x) - .5 * gl_NumWorkGroups.x);
-    uv.y = (float(texelCoord.y) - .5 * gl_NumWorkGroups.y);
-    uv /= gl_NumWorkGroups.xy;
+    uv.x = (float(texelCoord.x) - .5 * gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+    uv.y = (float(texelCoord.y) - .5 * gl_NumWorkGroups.y * gl_WorkGroupSize.x);
+    uv /= gl_WorkGroupSize.xy * gl_NumWorkGroups.xy;
 
     uint seed = uint(uint(texelCoord.x) * uint(1973) + uint(texelCoord.y) * uint(9277) + uint(frame) * uint(26699)) | uint(1);
 

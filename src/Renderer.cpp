@@ -6,7 +6,6 @@
 #include "Shader.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
-#include <iterator>
 #include "imgui.h"
 #include "OBJ_Loader.h"
 
@@ -34,16 +33,38 @@ namespace rt {
         std::vector<Sphere> spheres = initRTSpheres();
         std::cout << "Size of sphere struct : " << sizeof(Sphere) << std::endl;
         std::cout << "Size of spheres vector : " << spheres.size() * sizeof(Sphere) << std::endl;
-//        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_ssbo);
-//        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, spheres.size() * sizeof(Sphere), spheres.data());
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_ssbo);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(Sphere), spheres.data(), GL_STATIC_DRAW);
 
         m_compShader->use();
         m_compShader->setUniform1i("numSpheres", spheres.size());
 
 
+        int work_grp_cnt[3];
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &work_grp_cnt[0]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &work_grp_cnt[1]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &work_grp_cnt[2]);
+        std::cout << "Max work groups per compute shader" <<
+                  " x:" << work_grp_cnt[0] <<
+                  " y:" << work_grp_cnt[1] <<
+                  " z:" << work_grp_cnt[2] << "\n";
+
+        int work_grp_size[3];
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_grp_size[0]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_grp_size[1]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_grp_size[2]);
+        std::cout << "Max work group sizes" <<
+                  " x:" << work_grp_size[0] <<
+                  " y:" << work_grp_size[1] <<
+                  " z:" << work_grp_size[2] << "\n";
+
+        int work_grp_inv;
+        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &work_grp_inv);
+        std::cout << "Max invocations count per work group: " << work_grp_inv << "\n";
 
 
-        initModel("../resources/suzanne.obj");
+
+        // initModel("../resources/suzanne_2.obj");
     }
 
     void Renderer::initQuadOutput() {
@@ -115,14 +136,12 @@ namespace rt {
         for(auto sph: spheres){
             spheresVec.push_back(sph);
         }
-        std::cout << spheresVec.size() << std::endl;
         return spheresVec;
     };
 
     void Renderer::initModel(const std::string &modelPath) {
         objl::Loader loader;
         loader.LoadFile(modelPath);
-        std::cout << loader.LoadedMeshes[0].MeshName << std::endl;
 
         struct Triangle{
             objl::Vector3 v0;
@@ -140,8 +159,8 @@ namespace rt {
         Material glowingTest{
                 {0.9f, 0.9f, 0.9f},
                 0.0,
-                1.0,
-                1.0,
+                0.3,
+                0.0,
                 {7.7,7.7}
         };
 
@@ -151,9 +170,9 @@ namespace rt {
             triangles[i].v2 = loader.LoadedMeshes[0].Vertices[loader.LoadedMeshes[0].Indices[i*3 + 2]].Position;
             triangles[i].material = glowingTest;
         }
-        for(auto tri: triangles){
-            std::cout << tri.v0.X << ' ' << tri.v0.Y << ' ' << tri.v0.Z << std::endl;
-        }
+//        for(auto tri: triangles){
+//            std::cout << tri.v0.X << ' ' << tri.v0.Y << ' ' << tri.v0.Z << std::endl;
+//        }
 
         // glBufferData(GL_SHADER_STORAGE_BUFFER, 192+1440, nullptr, GL_STATIC_DRAW);
         std::cout << "Size of objl::Vector3 : " << sizeof(objl::Vector3) << std::endl;
@@ -165,6 +184,7 @@ namespace rt {
 
         m_compShader->use();
         m_compShader->setUniform1i("numTriangles", triangles.size());
+
     };
 
     void Renderer::updateCamera(glm::vec3 camPos, glm::vec3 camDir, glm::mat4 invProjection){
@@ -185,9 +205,11 @@ namespace rt {
     void Renderer::draw() {
 
         static int bounces = 2, samples = 1;
+        static float jitter = 0.0;
         bool change = false;
         change |= ImGui::InputInt("Bounces", &bounces, 1, 2);
         change |= ImGui::InputInt("Samples", &samples);
+        change |= ImGui::SliderFloat("Jitter", &jitter, 0.0, 0.003);
         ImGui::End();
 
         if(change)
@@ -202,7 +224,8 @@ namespace rt {
         m_compShader->setUniform1i("frame", m_frames);
         m_compShader->setUniform1i("BOUNCES", bounces);
         m_compShader->setUniform1i("RAYS_PER_PIXEL", samples);
-        glDispatchCompute((unsigned int)VP_WIDTH, (unsigned int)VP_HEIGHT, 1);
+        m_compShader->setUniform1f("JITTER", jitter);
+        glDispatchCompute((unsigned int)VP_WIDTH/8, (unsigned int)VP_HEIGHT/8, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         m_shader->use();
