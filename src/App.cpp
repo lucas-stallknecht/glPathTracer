@@ -127,19 +127,19 @@ namespace rt {
     }
 
     void App::keyInput() {
-        if (m_keysArePressed['W']) {
+        if (m_keysArePressed['W'] && m_focused) {
             m_cam.moveForward(m_io->DeltaTime);
             m_renderer->resetAccumulation();
         }
-        if (m_keysArePressed['S']) {
+        if (m_keysArePressed['S'] && m_focused) {
             m_cam.moveBackward(m_io->DeltaTime);
             m_renderer->resetAccumulation();
         }
-        if (m_keysArePressed['A']) {
+        if (m_keysArePressed['A'] && m_focused) {
             m_cam.moveLeft(m_io->DeltaTime);
             m_renderer->resetAccumulation();
         }
-        if (m_keysArePressed['D']) {
+        if (m_keysArePressed['D'] && m_focused) {
             m_cam.moveRight(m_io->DeltaTime);
             m_renderer->resetAccumulation();
         }

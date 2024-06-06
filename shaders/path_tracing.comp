@@ -1,8 +1,5 @@
 #version 450 core
 
-//#define BOUNCES 10
-//#define RAYS_PER_PIXEL 1
-//#define JITTER 0.000
 #define PI 3.14159265359f
 
 struct Material {
@@ -52,17 +49,17 @@ layout (std430, binding = 2) readonly buffer trianglesBuffer {
 };
 
 // Render uniforms
-uniform int frame;
-uniform int BOUNCES;
-uniform int RAYS_PER_PIXEL;
-uniform float JITTER;
+uniform int u_frame;
+uniform int u_bounces;
+uniform int u_samples;
+uniform float u_jitter;
 // Cam uniforms
 uniform vec3 camPos;
 uniform mat4 invView;
 uniform mat4 invProjection;
 // Geometries uniform
-uniform int numSpheres;
-uniform int numTriangles;
+uniform int u_nSpheres;
+uniform int u_nTriangles;
 
 
 // ========= TEST BOX =========
@@ -184,8 +181,8 @@ HitInfo rayTriangleIntersect(Ray ray, Triangle tri) {
 
 bool boxIntersection(Ray ray, vec3 boxSize)
 {
-    vec3 m = 1.0 / ray.rd; // can precompute if traversing a set of aligned boxes
-    vec3 n = m * ray.ro;   // can precompute if traversing a set of aligned boxes
+    vec3 m = 1.0 / ray.rd;
+    vec3 n = m * ray.ro;
     vec3 k = abs(m) * boxSize;
     vec3 t1 = -n - k;
     vec3 t2 = -n + k;
@@ -203,7 +200,7 @@ HitInfo intersects(Ray ray) {
 
     Triangle box[12] = buildTestBox();
 
-    for (int i = 0; i < numSpheres; i++) {
+    for (int i = 0; i < u_nSpheres; i++) {
         HitInfo sphereHi = raySphereIntersect(ray, spheres[i]);
         if (sphereHi.hit && (!hi.hit || sphereHi.dist < hi.dist)) {
             hi = sphereHi;
@@ -218,7 +215,7 @@ HitInfo intersects(Ray ray) {
 
     bool monkeyBoundingBox = boxIntersection(ray, vec3(0.5));
     if(monkeyBoundingBox)
-        for (int i = 0; i < numTriangles; i++) {
+        for (int i = 0; i < u_nTriangles; i++) {
             HitInfo triangleHi = rayTriangleIntersect(ray, triangles[i]);
             if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
                 hi = triangleHi;
@@ -232,7 +229,7 @@ vec3 trace(Ray ray, inout uint seed) {
     vec3 rayCol = vec3(1.);
     vec3 pixelColor = vec3(0.);
 
-    for (int i = 0; i < BOUNCES; i++) {
+    for (int i = 0; i < u_bounces; i++) {
         HitInfo hi = intersects(ray);
         if (!hi.hit) {
             break;
@@ -247,6 +244,8 @@ vec3 trace(Ray ray, inout uint seed) {
         newRay.ro = hi.pos + hi.normal * 0.001;
 
         // roughness component
+        // the bigger the roughness, the more the ray will be reflected in a diffuse manner
+        // instead of following the specular direction
         vec3 diffuseDir = normalize(hi.normal + randomUnitVector(seed));
         vec3 specularReflectionDir = reflect(ray.rd, hi.normal);
         specularReflectionDir = normalize(mix(specularReflectionDir, diffuseDir, hi.material.roughness));
@@ -255,13 +254,12 @@ vec3 trace(Ray ray, inout uint seed) {
         float shouldSpecular = (randomFloat01(seed) < hi.material.specularPerc) ? 1.0f : 0.0f;
         newRay.rd = normalize(mix(diffuseDir, specularReflectionDir, shouldSpecular));
 
-
-
         // early stoppage
         // https://blog.demofox.org/2020/06/06/casual-shadertoy-path-tracing-2-image-improvement-and-glossy-reflections/
         float p = max(rayCol.r, max(rayCol.g, rayCol.b));
-        if (randomFloat01(seed) > p)
-        break;
+        if (randomFloat01(seed) > p){
+            break;
+        }
         // Add the energy we 'lose' by randomly terminating paths
         rayCol *= 1.0f / p;
 
@@ -280,7 +278,7 @@ void main() {
     uv.y = (float(texelCoord.y) - .5 * gl_NumWorkGroups.y * gl_WorkGroupSize.x);
     uv /= gl_WorkGroupSize.xy * gl_NumWorkGroups.xy;
 
-    uint seed = uint(uint(texelCoord.x) * uint(1973) + uint(texelCoord.y) * uint(9277) + uint(frame) * uint(26699)) | uint(1);
+    uint seed = uint(uint(texelCoord.x) * uint(1973) + uint(texelCoord.y) * uint(9277) + uint(u_frame) * uint(26699)) | uint(1);
 
     Ray cam;
     cam.ro = camPos;
@@ -289,15 +287,17 @@ void main() {
     cam.rd = vec3(invView * vec4(normalizedTarget, 0.0));
 
     vec3 col;
-    for (int i = 0; i < RAYS_PER_PIXEL; i++) {
+    // mulitple rays per pixel
+    for (int i = 0; i < u_samples; i++) {
         Ray randomCam;
         randomCam.ro = cam.ro;
-        randomCam.rd = normalize(cam.rd + JITTER * randomUnitVector(seed));
-        col += trace(randomCam, seed) / float(RAYS_PER_PIXEL);
+        randomCam.rd = normalize(cam.rd + u_jitter * randomUnitVector(seed));
+        col += trace(randomCam, seed) / float(u_samples);
     }
 
+    // accumulation
     vec3 colPrev = imageLoad(imgOutput, texelCoord).rgb;
-    col = mix(colPrev, col, 1.0 / (float(frame) + 1));
+    col = mix(colPrev, col, 1.0 / (float(u_frame) + 1));
 
     imageStore(imgOutput, texelCoord, vec4(col, 1.0));
 }

@@ -17,24 +17,24 @@ namespace rt {
     }
 
     void Camera::moveForward(float deltaTime) {
-        m_camPos += m_camDir * CAM_MOV_SPEED * deltaTime;
+        m_camPos += m_camDir * CAM_MOV_SPEED;
     }
 
     void Camera::moveBackward(float deltaTime) {
-        m_camPos -= m_camDir * CAM_MOV_SPEED * deltaTime;
+        m_camPos -= m_camDir * CAM_MOV_SPEED;
     }
 
     void Camera::moveLeft(float deltaTime) {
-        m_camPos -= glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED * deltaTime;
+        m_camPos -= glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED;
     }
 
     void Camera::moveRight(float deltaTime) {
-        m_camPos += glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED * deltaTime;
+        m_camPos += glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED;
     }
 
     void Camera::updateCamDirection(float deltax, float deltay, float deltaTime){
-        float pitchDelta = deltay * CAM_VIEW_SPEED * deltaTime;
-        float yawDelta = deltax * CAM_VIEW_SPEED * deltaTime;
+        float pitchDelta = deltay * CAM_VIEW_SPEED;
+        float yawDelta = deltax * CAM_VIEW_SPEED;
 
         glm::vec3 rightDirection = glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f));
 

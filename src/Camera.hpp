@@ -8,8 +8,8 @@ namespace rt {
 
     class Camera {
 
-        static constexpr float CAM_MOV_SPEED = 2.0f;
-        static constexpr float CAM_VIEW_SPEED = 0.05f;
+        static constexpr float CAM_MOV_SPEED = 0.007f;
+        static constexpr float CAM_VIEW_SPEED = 0.001f;
 
     public:
         glm::vec3 m_camPos = glm::vec3(0.0f, 0.0f, -5.0f);

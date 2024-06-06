@@ -37,7 +37,7 @@ namespace rt {
         glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(Sphere), spheres.data(), GL_STATIC_DRAW);
 
         m_compShader->use();
-        m_compShader->setUniform1i("numSpheres", spheres.size());
+        m_compShader->setUniform1i("u_nSpheres", spheres.size());
 
 
         int work_grp_cnt[3];
@@ -110,24 +110,24 @@ namespace rt {
                 {
                         {-0.75f, 0.0f, 0.0f},
                         0.2,
-                        {{0.9f, 0.9f, 0.9f}, 0.0, 0.0, 1.0, {7.7,7.7}},
+                        {{0.77f, 0.55f, 1.0f}, 0.0, 0.0, 1.0, {7.7,7.7}},
                 },
                 // middle ball
                 {
                         {-0.25f, 0.0f, 0.0f},
                         0.2,
-                        {{0.9f, 0.9f, 0.9f}, 0.0, 0.0, 0.75, {7.7,7.7}},
+                        {{0.77f, 0.55f, 1.0f}, 0.0, 0.0, 0.75, {7.7,7.7}},
                 },
                 {
                         {0.25f, 0.0f, 0.0f},
                         0.2,
-                        {{0.9f, 0.9f, 0.9f}, 0.0, 0.0, 0.5, {7.7,7.7}},
+                        {{0.77f, 0.55f, 1.0f}, 0.0, 0.0, 0.5, {7.7,7.7}},
                 },
                 // left ball
                 {
                         {0.75f, 0.0f, 0.0f},
                         0.2,
-                        {{0.9f, 0.9f, 0.9f}, 0.0, 0.0, 0.25, {7.7,7.7}},
+                        {{0.77f, 0.55f, 1.0f}, 0.0, 0.0, 0.25, {7.7,7.7}},
                 },
 
         };
@@ -183,7 +183,7 @@ namespace rt {
         glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), triangles.data(), GL_STATIC_DRAW);
 
         m_compShader->use();
-        m_compShader->setUniform1i("numTriangles", triangles.size());
+        m_compShader->setUniform1i("u_nTriangles", triangles.size());
 
     };
 
@@ -204,7 +204,7 @@ namespace rt {
 
     void Renderer::draw() {
 
-        static int bounces = 2, samples = 1;
+        static int bounces = 10, samples = 5;
         static float jitter = 0.0;
         bool change = false;
         change |= ImGui::InputInt("Bounces", &bounces, 1, 2);
@@ -221,10 +221,10 @@ namespace rt {
         glClear(GL_COLOR_BUFFER_BIT);
         glBindImageTexture(0, m_rtTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
         m_compShader->use();
-        m_compShader->setUniform1i("frame", m_frames);
-        m_compShader->setUniform1i("BOUNCES", bounces);
-        m_compShader->setUniform1i("RAYS_PER_PIXEL", samples);
-        m_compShader->setUniform1f("JITTER", jitter);
+        m_compShader->setUniform1i("u_frame", m_frames);
+        m_compShader->setUniform1i("u_bounces", bounces);
+        m_compShader->setUniform1i("u_samples", samples);
+        m_compShader->setUniform1f("u_jitter", jitter);
         glDispatchCompute((unsigned int)VP_WIDTH/8, (unsigned int)VP_HEIGHT/8, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
