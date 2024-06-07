@@ -63,14 +63,28 @@ namespace rt {
 
     void App::run() {
 
+        RenderOptions renderOptions = m_renderer->renderOptions;
+
         while (!glfwWindowShouldClose(m_window)) {
 
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
+
             {
                 ImGui::Begin("Rendering");
                 ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / m_io->Framerate, m_io->Framerate);
+
+                bool change = false;
+                change |= ImGui::InputInt("Bounces", &renderOptions.bounces, 1, 2);
+                change |= ImGui::InputInt("Samples", &renderOptions.samples);
+                change |= ImGui::SliderFloat("Jitter", &renderOptions.jitter, 0.0, 0.003);
+                ImGui::End();
+
+                if(change){
+                    m_renderer->resetAccumulation();
+                    m_renderer->renderOptions = renderOptions;
+                }
             }
 
 

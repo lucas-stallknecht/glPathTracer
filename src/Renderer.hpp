@@ -15,12 +15,10 @@
 
 namespace rt {
 
-
-
     struct RenderOptions {
-        int bounces;
-        int samples;
-        float jitter;
+        int bounces = 4;
+        int samples = 1;
+        float jitter = 0.0;
     };
 
     class Renderer {
@@ -30,6 +28,8 @@ namespace rt {
         void draw();
         void updateCamera(glm::vec3 camPos, glm::vec3 camDir, glm::mat4 invProjection);
         void resetAccumulation();
+
+        RenderOptions renderOptions;
 
     private:
         void initQuadOutput();

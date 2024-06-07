@@ -27,12 +27,10 @@ namespace rt {
         m_shader->use();
         initQuadOutput();
 
-
         std::vector<Sphere> spheres = Loader::loadRTSpheres(true);
         GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
         std::vector<Triangle> triangles = Loader::loadTrianglesFromFile("../resources/suzanne.obj", true);
         GLsizeiptr trianglesVecSize = triangles.size() * sizeof(Triangle);
-
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
         glBufferData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize, nullptr, GL_STATIC_DRAW);
@@ -77,7 +75,7 @@ namespace rt {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, VP_WIDTH, VP_HEIGHT, 0, GL_RGBA,
-                     GL_FLOAT, NULL);
+                     GL_FLOAT, nullptr);
         glBindImageTexture(0, m_rtTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, m_rtTexture);
@@ -124,27 +122,16 @@ namespace rt {
 
     void Renderer::draw() {
 
-        static int bounces = 3, samples = 1;
-        static float jitter = 0.0;
-        bool change = false;
-        change |= ImGui::InputInt("Bounces", &bounces, 1, 2);
-        change |= ImGui::InputInt("Samples", &samples);
-        change |= ImGui::SliderFloat("Jitter", &jitter, 0.0, 0.003);
-        ImGui::End();
-
-        if(change)
-            m_frame = 0;
-        else
-            m_frame++;
-
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+
         glBindImageTexture(0, m_rtTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
         m_compShader->use();
         m_compShader->setUniform1i("u_frame", m_frame);
-        m_compShader->setUniform1i("u_bounces", bounces);
-        m_compShader->setUniform1i("u_samples", samples);
-        m_compShader->setUniform1f("u_jitter", jitter);
+        m_compShader->setUniform1i("u_bounces", renderOptions.bounces);
+        m_compShader->setUniform1i("u_samples", renderOptions.samples);
+        m_compShader->setUniform1f("u_jitter", renderOptions.jitter);
         glDispatchCompute((unsigned int)VP_WIDTH/8, (unsigned int)VP_HEIGHT/8, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
@@ -153,5 +140,7 @@ namespace rt {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, m_rtTexture);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        m_frame++;
     }
 } // rt
