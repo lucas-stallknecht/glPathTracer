@@ -24,4 +24,4 @@ namespace rt {
         GLuint m_program;
     };
 
-} // lgl
+} // rt

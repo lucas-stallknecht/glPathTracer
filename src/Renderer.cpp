@@ -6,8 +6,8 @@
 #include "Shader.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
+#include "Loader.hpp"
 #include "imgui.h"
-#include "OBJ_Loader.h"
 
 namespace rt {
 
@@ -24,47 +24,27 @@ namespace rt {
         glGenVertexArrays(1, &m_vao);
         glBindVertexArray(m_vao);
         glGenBuffers(1, &m_ssbo);
+        m_shader->use();
         initQuadOutput();
 
+
+        std::vector<Sphere> spheres = Loader::loadRTSpheres(true);
+        GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
+        std::vector<Triangle> triangles = Loader::loadTrianglesFromFile("../resources/suzanne.obj", true);
+        GLsizeiptr trianglesVecSize = triangles.size() * sizeof(Triangle);
+
+
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
-        std::cout << "Size of a material struct : " << sizeof(Material) << std::endl;
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize, nullptr, GL_STATIC_DRAW);
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, m_ssbo, 0 , sphereVecSize);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sphereVecSize, spheres.data());
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 2, m_ssbo, sphereVecSize , trianglesVecSize);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, sphereVecSize, trianglesVecSize, triangles.data());
 
-
-        std::vector<Sphere> spheres = initRTSpheres();
-        std::cout << "Size of sphere struct : " << sizeof(Sphere) << std::endl;
-        std::cout << "Size of spheres vector : " << spheres.size() * sizeof(Sphere) << std::endl;
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_ssbo);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(Sphere), spheres.data(), GL_STATIC_DRAW);
 
         m_compShader->use();
         m_compShader->setUniform1i("u_nSpheres", spheres.size());
-
-
-        int work_grp_cnt[3];
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &work_grp_cnt[0]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &work_grp_cnt[1]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &work_grp_cnt[2]);
-        std::cout << "Max work groups per compute shader" <<
-                  " x:" << work_grp_cnt[0] <<
-                  " y:" << work_grp_cnt[1] <<
-                  " z:" << work_grp_cnt[2] << "\n";
-
-        int work_grp_size[3];
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_grp_size[0]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_grp_size[1]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_grp_size[2]);
-        std::cout << "Max work group sizes" <<
-                  " x:" << work_grp_size[0] <<
-                  " y:" << work_grp_size[1] <<
-                  " z:" << work_grp_size[2] << "\n";
-
-        int work_grp_inv;
-        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &work_grp_inv);
-        std::cout << "Max invocations count per work group: " << work_grp_inv << "\n";
-
-
-
-        // initModel("../resources/suzanne_2.obj");
+        m_compShader->setUniform1i("u_nTriangles", triangles.size());
     }
 
     void Renderer::initQuadOutput() {
@@ -103,88 +83,28 @@ namespace rt {
         glBindTexture(GL_TEXTURE_2D, m_rtTexture);
     }
 
-    std::vector<Sphere> Renderer::initRTSpheres() {
+    void Renderer::printAvailableGroupSizes(){
+        int work_grp_cnt[3];
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &work_grp_cnt[0]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &work_grp_cnt[1]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &work_grp_cnt[2]);
+        std::cout << "Max work groups per compute shader" <<
+                  " x:" << work_grp_cnt[0] <<
+                  " y:" << work_grp_cnt[1] <<
+                  " z:" << work_grp_cnt[2] << "\n";
 
-        Sphere spheres[] = {
-                // right ball
-                {
-                        {-0.75f, 0.0f, 0.0f},
-                        0.2,
-                        {{0.77f, 0.55f, 1.0f}, 0.0, 0.0, 1.0, {7.7,7.7}},
-                },
-                // middle ball
-                {
-                        {-0.25f, 0.0f, 0.0f},
-                        0.2,
-                        {{0.77f, 0.55f, 1.0f}, 0.0, 0.0, 0.75, {7.7,7.7}},
-                },
-                {
-                        {0.25f, 0.0f, 0.0f},
-                        0.2,
-                        {{0.77f, 0.55f, 1.0f}, 0.0, 0.0, 0.5, {7.7,7.7}},
-                },
-                // left ball
-                {
-                        {0.75f, 0.0f, 0.0f},
-                        0.2,
-                        {{0.77f, 0.55f, 1.0f}, 0.0, 0.0, 0.25, {7.7,7.7}},
-                },
+        int work_grp_size[3];
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_grp_size[0]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_grp_size[1]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_grp_size[2]);
+        std::cout << "Max work group sizes" <<
+                  " x:" << work_grp_size[0] <<
+                  " y:" << work_grp_size[1] <<
+                  " z:" << work_grp_size[2] << "\n";
 
-        };
-
-        std::vector<Sphere> spheresVec;
-        for(auto sph: spheres){
-            spheresVec.push_back(sph);
-        }
-        return spheresVec;
-    };
-
-    void Renderer::initModel(const std::string &modelPath) {
-        objl::Loader loader;
-        loader.LoadFile(modelPath);
-
-        struct Triangle{
-            objl::Vector3 v0;
-            float padding1;
-            objl::Vector3 v1;
-            float padding2;
-            objl::Vector3 v2;
-            float padding3;
-            Material material;
-        };
-
-        unsigned int numTriangles = loader.LoadedMeshes[0].Indices.size()/3;
-        std::vector<Triangle> triangles(numTriangles);
-
-        Material glowingTest{
-                {0.9f, 0.9f, 0.9f},
-                0.0,
-                0.3,
-                0.0,
-                {7.7,7.7}
-        };
-
-        for(int i=0; i < numTriangles; i++){
-            triangles[i].v0 = loader.LoadedMeshes[0].Vertices[loader.LoadedMeshes[0].Indices[i*3 + 0]].Position;
-            triangles[i].v1 = loader.LoadedMeshes[0].Vertices[loader.LoadedMeshes[0].Indices[i*3 + 1]].Position;
-            triangles[i].v2 = loader.LoadedMeshes[0].Vertices[loader.LoadedMeshes[0].Indices[i*3 + 2]].Position;
-            triangles[i].material = glowingTest;
-        }
-//        for(auto tri: triangles){
-//            std::cout << tri.v0.X << ' ' << tri.v0.Y << ' ' << tri.v0.Z << std::endl;
-//        }
-
-        // glBufferData(GL_SHADER_STORAGE_BUFFER, 192+1440, nullptr, GL_STATIC_DRAW);
-        std::cout << "Size of objl::Vector3 : " << sizeof(objl::Vector3) << std::endl;
-        std::cout << "Size of triangle struct : " << sizeof(Triangle) << std::endl;
-        std::cout << "Size of triangles vector : " << triangles.size() * sizeof(Triangle) << std::endl;
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_ssbo);
-        // glBufferSubData(GL_SHADER_STORAGE_BUFFER, 192, triangles.size() * sizeof(Triangle), triangles.data());
-        glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), triangles.data(), GL_STATIC_DRAW);
-
-        m_compShader->use();
-        m_compShader->setUniform1i("u_nTriangles", triangles.size());
-
+        int work_grp_inv;
+        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &work_grp_inv);
+        std::cout << "Max invocations count per work group: " << work_grp_inv << "\n";
     };
 
     void Renderer::updateCamera(glm::vec3 camPos, glm::vec3 camDir, glm::mat4 invProjection){
@@ -199,12 +119,12 @@ namespace rt {
     }
 
     void Renderer::resetAccumulation() {
-        m_frames = 0;
+        m_frame = 0;
     }
 
     void Renderer::draw() {
 
-        static int bounces = 10, samples = 5;
+        static int bounces = 3, samples = 1;
         static float jitter = 0.0;
         bool change = false;
         change |= ImGui::InputInt("Bounces", &bounces, 1, 2);
@@ -213,15 +133,15 @@ namespace rt {
         ImGui::End();
 
         if(change)
-            m_frames = 0;
+            m_frame = 0;
         else
-            m_frames++;
+            m_frame++;
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         glBindImageTexture(0, m_rtTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
         m_compShader->use();
-        m_compShader->setUniform1i("u_frame", m_frames);
+        m_compShader->setUniform1i("u_frame", m_frame);
         m_compShader->setUniform1i("u_bounces", bounces);
         m_compShader->setUniform1i("u_samples", samples);
         m_compShader->setUniform1f("u_jitter", jitter);
@@ -234,4 +154,4 @@ namespace rt {
         glBindTexture(GL_TEXTURE_2D, m_rtTexture);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }
-} // lgl
+} // rt

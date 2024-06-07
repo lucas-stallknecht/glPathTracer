@@ -143,8 +143,6 @@ namespace rt {
             m_cam.moveRight(m_io->DeltaTime);
             m_renderer->resetAccumulation();
         }
-        // std::cout << "cam position : " << m_cam.m_camPos.x << " " <<  m_cam.m_camPos.y << " " <<  m_cam.m_camPos.z << std::endl;
-
     }
 
     App::~App() {
@@ -153,4 +151,4 @@ namespace rt {
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
     };
-} // lgl
+} // rt

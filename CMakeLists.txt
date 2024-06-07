@@ -14,6 +14,7 @@ file(GLOB_RECURSE SOURCES
         "${SOURCE_DIR}/*.c"
 )
 
+
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -21,6 +22,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         ${LIBS_DIR}/glfw-3.4.bin.WIN64/include
         ${LIBS_DIR}/glad/include
         ${LIBS_DIR}/imgui
+        ${LIBS_DIR}/tinyobjloader
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

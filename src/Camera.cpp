@@ -6,7 +6,6 @@
 #include <glm/gtc/quaternion.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
-#include <iostream>
 
 namespace rt {
 
@@ -17,19 +16,19 @@ namespace rt {
     }
 
     void Camera::moveForward(float deltaTime) {
-        m_camPos += m_camDir * CAM_MOV_SPEED;
+        m_camPos += m_camDir * CAM_MOV_SPEED  * deltaTime;
     }
 
     void Camera::moveBackward(float deltaTime) {
-        m_camPos -= m_camDir * CAM_MOV_SPEED;
+        m_camPos -= m_camDir * CAM_MOV_SPEED  * deltaTime;
     }
 
     void Camera::moveLeft(float deltaTime) {
-        m_camPos -= glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED;
+        m_camPos -= glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED  * deltaTime;
     }
 
     void Camera::moveRight(float deltaTime) {
-        m_camPos += glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED;
+        m_camPos += glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED * deltaTime;
     }
 
     void Camera::updateCamDirection(float deltax, float deltay, float deltaTime){
