@@ -1,7 +1,7 @@
 //
 // Created by Dusha on 07/06/2024.
 //
-#include "Loader.hpp"
+#include "GeometryManager.hpp"
 #include <iostream>
 
 #define TINYOBJLOADER_IMPLEMENTATION
@@ -10,7 +10,7 @@
 
 namespace rt {
 
-    std::vector<Sphere> Loader::loadRTSpheres(bool log) {
+    std::vector<Sphere> GeometryManager::loadRTSpheres(bool log) {
         std::vector<Sphere> spheres;
 
         spheres.push_back(Sphere{
@@ -39,8 +39,7 @@ namespace rt {
         return spheres;
     }
 
-
-    std::vector<Triangle> Loader::loadTrianglesFromFile(const std::string &objPath, bool log) {
+    std::vector<Triangle> GeometryManager::loadTrianglesFromFile(const std::string &objPath, bool log) {
 
         std::vector<Triangle> triangles;
         Material glowingTest{
@@ -83,17 +82,11 @@ namespace rt {
                     tinyobj::real_t vz = attrib.vertices[3 * size_t(idx.vertex_index) + 2];
 
                     if (v == 0) {
-                        triangle.v0[0] = vx;
-                        triangle.v0[1] = vy;
-                        triangle.v0[2] = vz;
+                        triangle.v0 = {vx, vy, vz};
                     } else if (v == 1) {
-                        triangle.v1[0] = vx;
-                        triangle.v1[1] = vy;
-                        triangle.v1[2] = vz;
+                        triangle.v1 = {vx, vy, vz};
                     } else {
-                        triangle.v2[0] = vx;
-                        triangle.v2[1] = vy;
-                        triangle.v2[2] = vz;
+                        triangle.v2 = {vx, vy, vz};
                     }
                 }
 
@@ -115,4 +108,74 @@ namespace rt {
 
         return triangles;
     }
+
+    std::vector<Node> GeometryManager::buildBVH(std::vector<Triangle>& triangles, unsigned int nBoxes){
+
+        std::vector<Node> nodes(2*nBoxes - 1);
+
+        for(auto tri : triangles)
+            tri.centroid = (tri.v0 + tri.v1 + tri.v2) * 0.333f;
+
+        Node& root = nodes[0];
+        root.leftChild = root.rightChild = 0;
+        root.firstPrim = 0;
+        root.primCount = triangles.size();
+
+    }
+
+    void GeometryManager::updateNodeBounds(std::vector<Triangle>& triangles, std::vector<Node>& nodes, unsigned int nodeIndex){
+        Node& node = nodes[nodeIndex];
+        node.aabbMin = glm::vec3( 1e30f );
+        node.aabbMax = glm::vec3( -1e30f );
+        for (unsigned int first = node.firstPrim, i = 0; i < node.primCount; i++)
+        {
+            Triangle& leafTri = triangles[first + i];
+            node.aabbMin = glm::min( node.aabbMin, leafTri.v0 );
+            node.aabbMin = glm::min( node.aabbMin, leafTri.v1 );
+            node.aabbMin = glm::min( node.aabbMin, leafTri.v2 );
+            node.aabbMax = glm::max( node.aabbMax, leafTri.v0 );
+            node.aabbMax = glm::max( node.aabbMax, leafTri.v1 );
+            node.aabbMax = glm::max( node.aabbMax, leafTri.v2 );
+        }
+    }
+
+    void GeometryManager::subdivide(std::vector<Triangle>& triangles, std::vector<Node>& nodes, unsigned int nodeIndex){
+        Node& node = nodes[nodeIndex];
+        glm::vec3 extent = node.aabbMax - node.aabbMin;
+        int axis = 0;
+        if(extent.y > extent.x)
+            axis = 1;
+        if(extent.z > extent[axis])
+            axis = 2;
+        float splitPos = node.aabbMin[axis] + extent[axis] * 0.5f;
+
+
+        unsigned int i = node.firstPrim;
+        unsigned int j = i + node.primCount - 1;
+        while (i <= j)
+        {
+            if (triangles[i].centroid[axis] < splitPos)
+                i++;
+            else
+                std::swap( triangles[i], triangles[j--] );
+        }
+
+
+        unsigned int leftCount = i - node.firstPrim;
+        if (leftCount == 0 || leftCount == node.primCount) return;
+        // create child nodes
+        int leftChildIdx = m_nodesUsed++;
+        int rightChildIdx = m_nodesUsed++;
+        node.leftChild = leftChildIdx;
+        nodes[leftChildIdx].firstPrim = node.firstPrim;
+        nodes[leftChildIdx].primCount = leftCount;
+        nodes[rightChildIdx].firstPrim = i;
+        nodes[rightChildIdx].primCount = node.primCount - leftCount;
+        node.primCount = 0;
+        updateNodeBounds(triangles, nodes, leftChildIdx);
+        updateNodeBounds(triangles, nodes, rightChildIdx);
+        subdivide(triangles, nodes, leftChildIdx);
+        subdivide(triangles, nodes, rightChildIdx);
+    }
+
 } // rt

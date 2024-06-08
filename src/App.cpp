@@ -86,8 +86,7 @@ namespace rt {
                     m_renderer->renderOptions = renderOptions;
                 }
             }
-
-
+            // swap front with back buffer
             glfwSwapBuffers(m_window);
             keyInput();
             glfwPollEvents();
@@ -107,9 +106,11 @@ namespace rt {
 
     void App::mouseCallback(GLFWwindow *window, float xpos, float ypos) {
 
+        // is right-clicked basically
         if(!m_focused)
             return;
 
+        // the mouse was not focused the frame before
         if (m_firstMouse)
         {
             m_lastMousePosition.x = xpos;

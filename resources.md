@@ -13,3 +13,4 @@
 - https://github.com/RobertBeckebans/OpenGL-PathTracer
 - https://www.reddit.com/r/rust/comments/zsrvss/strolle_raytracing_2_million_triangles_in_realtime/
 - https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-acceleration-structure/introduction.html
+- https://jacco.ompf2.com/2022/04/13/how-to-build-a-bvh-part-1-basics/

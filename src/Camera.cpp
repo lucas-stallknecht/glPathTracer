@@ -32,6 +32,7 @@ namespace rt {
     }
 
     void Camera::updateCamDirection(float deltax, float deltay, float deltaTime){
+        // pitch and yaw delta already depends on framerate so we don't multiply it by deltaTime
         float pitchDelta = deltay * CAM_VIEW_SPEED;
         float yawDelta = deltax * CAM_VIEW_SPEED;
 

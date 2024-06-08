@@ -32,8 +32,8 @@ namespace rt {
         RenderOptions renderOptions;
 
     private:
-        void initQuadOutput();
-        static void printAvailableGroupSizes();
+        void initializeRenderQuad();
+        static void logComputeShaderCapabilities();
 
         const int VP_WIDTH, VP_HEIGHT;
         std::unique_ptr<Shader> m_shader;

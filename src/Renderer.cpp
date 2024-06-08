@@ -6,32 +6,34 @@
 #include "Shader.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
-#include "Loader.hpp"
-#include "imgui.h"
+#include "GeometryManager.hpp"
 
 namespace rt {
 
     Renderer::Renderer(int width, int height) : VP_WIDTH(width), VP_HEIGHT(height){
         if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
-            std::cout << "Failed to initialize GLAD" << std::endl;
+             std::cout << "Failed to initialize GLAD" << std::endl;
             glfwTerminate();
         }
         glViewport(0, 0, VP_WIDTH, VP_HEIGHT);
 
+        // Shaders
         m_shader = std::make_unique<Shader>("../shaders/path_tracing.vert", "../shaders/path_tracing.frag");
         m_compShader = std::make_unique<ComputeShader>("../shaders/path_tracing.comp");
 
+        // Final quad output with texture
         glGenVertexArrays(1, &m_vao);
         glBindVertexArray(m_vao);
-        glGenBuffers(1, &m_ssbo);
         m_shader->use();
-        initQuadOutput();
+        initializeRenderQuad();
 
-        std::vector<Sphere> spheres = Loader::loadRTSpheres(true);
+        // Scene objects
+        std::vector<Sphere> spheres = GeometryManager::loadRTSpheres(true);
         GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
-        std::vector<Triangle> triangles = Loader::loadTrianglesFromFile("../resources/suzanne.obj", true);
+        std::vector<Triangle> triangles = GeometryManager::loadTrianglesFromFile("../resources/suzanne.obj", true);
         GLsizeiptr trianglesVecSize = triangles.size() * sizeof(Triangle);
 
+        glGenBuffers(1, &m_ssbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
         glBufferData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize, nullptr, GL_STATIC_DRAW);
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, m_ssbo, 0 , sphereVecSize);
@@ -39,13 +41,14 @@ namespace rt {
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 2, m_ssbo, sphereVecSize , trianglesVecSize);
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, sphereVecSize, trianglesVecSize, triangles.data());
 
-
         m_compShader->use();
         m_compShader->setUniform1i("u_nSpheres", spheres.size());
         m_compShader->setUniform1i("u_nTriangles", triangles.size());
+
+        std::cout << "miaou" << sizeof(glm::vec3) << std::endl;
     }
 
-    void Renderer::initQuadOutput() {
+    void Renderer::initializeRenderQuad() {
         float vertices[] = {
                 // positions        // texture Coords
                 -1.0f,  1.0f, 0.0f, 1.0f,
@@ -59,10 +62,10 @@ namespace rt {
         glGenBuffers(1, &VBO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        // vertices positions
+        // Vertices positions
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-        // texcoords
+        // Texcoords
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
@@ -77,11 +80,9 @@ namespace rt {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, VP_WIDTH, VP_HEIGHT, 0, GL_RGBA,
                      GL_FLOAT, nullptr);
         glBindImageTexture(0, m_rtTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, m_rtTexture);
     }
 
-    void Renderer::printAvailableGroupSizes(){
+    void Renderer::logComputeShaderCapabilities(){
         int work_grp_cnt[3];
         glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &work_grp_cnt[0]);
         glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &work_grp_cnt[1]);
@@ -124,7 +125,6 @@ namespace rt {
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-
 
         glBindImageTexture(0, m_rtTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
         m_compShader->use();
