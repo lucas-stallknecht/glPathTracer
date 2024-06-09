@@ -9,6 +9,13 @@
 
 namespace rt {
 
+    struct Vertex {
+        glm::vec3 position;
+        float pad1;
+        glm::vec3 normal;
+        float pad2;
+    }; // 32 bytes
+
     struct Material {
         glm::vec3 diffuseCol;
         float emissiveStrength;
@@ -24,14 +31,11 @@ namespace rt {
     };
 
     struct Triangle{
-        glm::vec3 v0;
-        float padding1;
-        glm::vec3 v1;
-        float padding2;
-        glm::vec3 v2;
-        float padding3;
+        Vertex v0;
+        Vertex v1;
+        Vertex v2;
         glm::vec3 centroid;
-        float padding4;
+        float pad1;
         Material material;
     };
 
@@ -43,7 +47,8 @@ namespace rt {
         unsigned int rightChild;
         unsigned int firstPrim;
         unsigned int primCount;
-        glm::vec2 padding;
+        int hitLink;
+        int missLink;
     };
 
     class GeometryManager {
@@ -61,8 +66,13 @@ namespace rt {
 
         void updateNodeBounds(unsigned int nodeIndex);
         void subdivide(unsigned int nodeIndex, int currentDepth);
+        int getRightChild(unsigned int parentIndex, unsigned int requestorIndex);
+        void buildLinks(unsigned int nodeIndex);
 
         int m_nodesUsed = 1;
         int m_maxDepth;
+        // gives the parentIndex for a node
+        // has been created to avoid exceeding 48 bytes for a node struct
+        std::vector<int> m_parents;
     };
 };

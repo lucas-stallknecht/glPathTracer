@@ -29,11 +29,12 @@ namespace rt {
 
         // Scene objects
         std::vector<Sphere> spheres = GeometryManager::loadRTSpheres(false);
+        spheres = std::vector<Sphere>(0);
         GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
 
-        GeometryManager monkey("../resources/suzanne.obj", 1, true);
+        GeometryManager monkey("../resources/suzanne_2.obj", 8, true);
         monkey.buildBVH(true);
-        monkey.traverseBVH(0);
+        // monkey.traverseBVH(0);
 
         std::vector<Triangle> triangles = monkey.m_triangles;
         GLsizeiptr trianglesVecSize = triangles.size() * sizeof(Triangle);
@@ -54,7 +55,6 @@ namespace rt {
         m_compShader->use();
         m_compShader->setUniform1i("u_nSpheres", spheres.size());
         m_compShader->setUniform1i("u_nTriangles", triangles.size());
-        m_compShader->setUniform1i("u_nodesDepth", 1);
     }
 
     void Renderer::initializeRenderQuad() {

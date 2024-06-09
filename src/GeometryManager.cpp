@@ -10,7 +10,8 @@
 
 namespace rt {
 
-    GeometryManager::GeometryManager(const std::string &objPath, int depth, bool log) : m_nodes(std::pow(2, depth + 1) - 1), m_maxDepth(depth){
+    GeometryManager::GeometryManager(const std::string &objPath, int depth, bool log)
+    : m_nodes(std::pow(2, depth + 1) - 1), m_maxDepth(depth), m_parents(std::pow(2, depth + 1) - 1){
         loadTrianglesFromFile(objPath, log);
     }
 
@@ -49,8 +50,8 @@ namespace rt {
         Material glowingTest{
                 {0.9f, 0.9f, 0.9f},
                 0.0,
-                0.3,
                 0.0,
+                0.15,
                 {7.7, 7.7}
         };
 
@@ -86,11 +87,11 @@ namespace rt {
                     tinyobj::real_t vz = attrib.vertices[3 * size_t(idx.vertex_index) + 2];
 
                     if (v == 0) {
-                        triangle.v0 = {vx, vy, vz};
+                        triangle.v0.position = {vx, vy, vz};
                     } else if (v == 1) {
-                        triangle.v1 = {vx, vy, vz};
+                        triangle.v1.position = {vx, vy, vz};
                     } else {
-                        triangle.v2 = {vx, vy, vz};
+                        triangle.v2.position = {vx, vy, vz};
                     }
                 }
 
@@ -121,56 +122,60 @@ namespace rt {
             std::cout << "Size of nodes vector: " << m_nodes.size() * sizeof(Node) << std::endl;
         }
 
+        // Initialize the root node and start recursions
         for(auto& tri : m_triangles){
-            tri.centroid = (tri.v0 + tri.v1 + tri.v2) * 0.333f;
+            tri.centroid = (tri.v0.position + tri.v1.position + tri.v2.position) * 0.333f;
         }
 
         Node& root = m_nodes[0];
         root.leftChild = root.rightChild = 0;
         root.firstPrim = 0;
         root.primCount = m_triangles.size();
+        m_parents[0] = -1;
 
         updateNodeBounds(0);
         subdivide(0, 0);
+        buildLinks(0);
     }
 
     void GeometryManager::updateNodeBounds(unsigned int nodeIndex){
         Node& node = m_nodes[nodeIndex];
         node.aabbMin = glm::vec3( 1e30f );
         node.aabbMax = glm::vec3( -1e30f );
+        // checks all the triangles contained in a bounding box and adjusts the min and max pos
         for (unsigned int first = node.firstPrim, i = 0; i < node.primCount; i++)
         {
             Triangle& leafTri = m_triangles[first + i];
-            node.aabbMin = glm::min( node.aabbMin, leafTri.v0 );
-            node.aabbMin = glm::min( node.aabbMin, leafTri.v1 );
-            node.aabbMin = glm::min( node.aabbMin, leafTri.v2 );
-            node.aabbMax = glm::max( node.aabbMax, leafTri.v0 );
-            node.aabbMax = glm::max( node.aabbMax, leafTri.v1 );
-            node.aabbMax = glm::max( node.aabbMax, leafTri.v2 );
+            node.aabbMin = glm::min( node.aabbMin, leafTri.v0.position );
+            node.aabbMin = glm::min( node.aabbMin, leafTri.v1.position );
+            node.aabbMin = glm::min( node.aabbMin, leafTri.v2.position );
+            node.aabbMax = glm::max( node.aabbMax, leafTri.v0.position );
+            node.aabbMax = glm::max( node.aabbMax, leafTri.v1.position );
+            node.aabbMax = glm::max( node.aabbMax, leafTri.v2.position );
         }
     }
 
     void GeometryManager::subdivide(unsigned int nodeIndex, int currentDepth) {
-
         Node& node = m_nodes[nodeIndex];
         glm::vec3 extent = node.aabbMax - node.aabbMin;
+        // select the axis of the split plane
         int axis = 0;
         if (extent.y > extent.x) axis = 1;
         if (extent.z > extent[axis]) axis = 2;
+        // middle of the extent ==> TODO uniform distribution across all bounding boxes
         float splitPos = node.aabbMin[axis] + extent[axis] * 0.5f;
 
+        // puts all the triangles with centroid before the splitPos on the left
+        // i will help determine the triangles count for the leftChild
         unsigned int i = node.firstPrim;
         unsigned int j = i + node.primCount - 1;
-
         while (i <= j) {
             if (m_triangles[i].centroid[axis] < splitPos)
                 i++;
             else
                 std::swap(m_triangles[i], m_triangles[j--]);
         }
-
         unsigned int leftCount = i - node.firstPrim;
-
 
         if(currentDepth < m_maxDepth){
             int leftChildIdx = m_nodesUsed++;
@@ -180,22 +185,66 @@ namespace rt {
 
             m_nodes[leftChildIdx].firstPrim = node.firstPrim;
             m_nodes[leftChildIdx].primCount = leftCount;
+            m_parents[leftChildIdx] = (int)nodeIndex;
+
             m_nodes[rightChildIdx].firstPrim = i;
             m_nodes[rightChildIdx].primCount = node.primCount - leftCount;
+            m_parents[rightChildIdx] = (int)nodeIndex;
+
+            // the node is not a leaf anymore
             node.primCount = 0;
 
+            // recalculate the bounding box for each child
             updateNodeBounds(leftChildIdx);
             updateNodeBounds(rightChildIdx);
 
+            // build the tree recursively
             subdivide(leftChildIdx, currentDepth + 1);
             subdivide(rightChildIdx, currentDepth + 1);
         }
     }
 
+    int GeometryManager::getRightChild(unsigned int parentIndex, unsigned int requestorIndex) {
+        Node& parentNode = m_nodes[parentIndex];
+
+        // requestor not a left child
+        if(requestorIndex > parentNode.leftChild){
+            // root of the tree
+            if(m_parents[parentIndex] < 0)
+                return -1.0;
+            return getRightChild(m_parents[parentIndex], parentIndex);
+        }
+
+        // returns sibling of the left child
+        return (int)parentNode.rightChild;
+    }
+
+    void GeometryManager::buildLinks(unsigned int nodeIndex) {
+        Node& node = m_nodes[nodeIndex];
+
+        // --- Hit Links
+        // if not the root, closest right sibling
+        node.hitLink = m_parents[nodeIndex] < 0 ? -1 : getRightChild(m_parents[nodeIndex], nodeIndex);
+
+        // --- Miss Links
+        // if not the root, closest right sibling
+        node.missLink = m_parents[nodeIndex] < 0 ? -1 : getRightChild(m_parents[nodeIndex], nodeIndex);
+
+        // if not a leaf
+        if(node.primCount == 0){
+            node.hitLink = (int)node.leftChild;
+            buildLinks(node.leftChild);
+            buildLinks(node.rightChild);
+        }
+
+    }
+
 
     void GeometryManager::traverseBVH(unsigned int index) {
         Node& node = m_nodes[index];
-        std::cout << "Index : " << index << " PrimCount : " << node.primCount << " Left child : " << node.leftChild << " Right child : " << node.rightChild << std::endl;
+        std::cout << "Index : " << index << " PrimCount : " << node.primCount
+        << " Left child : " << node.leftChild << " Right child : " << node.rightChild
+        << " Hit_Link : " << node.hitLink << " Miss_Link : " << node.missLink << std::endl;
 
         if(node.primCount == 0){
             traverseBVH(node.leftChild);

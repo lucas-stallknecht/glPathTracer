@@ -2,6 +2,11 @@
 
 #define PI 3.14159265359f
 
+struct Vertex {
+    vec3 position;
+    vec3 normal;
+};
+
 struct Material {
     vec3 diffuseCol; // 12
     float emissiveStrength; // 4
@@ -30,12 +35,12 @@ struct Sphere {
 };                      // 48 bytes
 
 struct Triangle {
-    vec3 v0;
-    vec3 v1;
-    vec3 v2;
+    Vertex v0;
+    Vertex v1;
+    Vertex v2;
     vec3 centroid_;
     Material material;
-};                      // 12*3 + 4*3 + 32 = 80 bytes total
+};                      // 32*3 + 16 + 32 = 144 bytes total
 
 struct Node {
     vec3 aabbMin;
@@ -44,6 +49,8 @@ struct Node {
     uint rightChild;
     uint firstPrim;
     uint primCount;
+    int hitLink;
+    int missLink;
 }; // 48 bytes
 
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -71,43 +78,115 @@ uniform mat4 invProjection;
 // Geometries uniform
 uniform int u_nSpheres;
 uniform int u_nTriangles;
-uniform int u_nNodes;
-uniform int u_nodesDepth;
 
 
 // ========= TEST BOX =========
 Triangle[12] buildTestBox() {
-    Material grayMat = Material(vec3(0.7, 0.7, 0.7), 0.0, 0.7, 0.5);
+    Material grayMat = Material(vec3(0.7, 0.7, 0.7), 0.0, 0.5, 0.5);
     Material redMat = Material(vec3(0.7, 0.1, 0.1), 0.0, 0.7, 0.5);
     Material greenMat = Material(vec3(0.1, 0.7, 0.1), 0.0, 0.7, 0.5);
-    Material lightMat = Material(vec3(1.0, 1.0, 1.0), 8.0, 0.7, 0.5);
+    Material lightMat = Material(vec3(1.0, 1.0, 1.0), 6.0, 0.7, 0.5);
 
     Triangle triangles[12];
+    vec3 normal = vec3(0.0, 1.0, 0.0); // Assuming a default normal for all vertices
+
     // Floor
-    triangles[0] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0), vec3(9.9, 9.9, 9.9), grayMat);
-    triangles[1] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0), vec3(-1.0, -1.0, 1.0), vec3(9.9, 9.9, 9.9), grayMat);
+    triangles[0] = Triangle(
+        Vertex(vec3(-1.0, -1.0, -1.0), normal),
+        Vertex(vec3(1.0, -1.0, -1.0), normal),
+        Vertex(vec3(1.0, -1.0, 1.0), normal),
+        vec3(9.9, 9.9, 9.9),
+        grayMat);
+    triangles[1] = Triangle(
+        Vertex(vec3(-1.0, -1.0, -1.0), normal),
+        Vertex(vec3(1.0, -1.0, 1.0), normal),
+        Vertex(vec3(-1.0, -1.0, 1.0), normal),
+        vec3(9.9, 9.9, 9.9),
+        grayMat
+    );
 
     // Ceiling
-    triangles[2] = Triangle(vec3(-1.0, 1.0, -1.0), vec3(1.0, 1.0, -1.0), vec3(1.0, 1.0, 1.0), vec3(9.9, 9.9, 9.9), grayMat);
-    triangles[3] = Triangle(vec3(-1.0, 1.0, -1.0), vec3(1.0, 1.0, 1.0), vec3(-1.0, 1.0, 1.0), vec3(9.9, 9.9, 9.9), grayMat);
+    triangles[2] = Triangle(
+        Vertex(vec3(-1.0, 1.0, -1.0), normal),
+        Vertex(vec3(1.0, 1.0, -1.0), normal),
+        Vertex(vec3(1.0, 1.0, 1.0), normal),
+        vec3(9.9, 9.9, 9.9),
+        grayMat
+    );
+    triangles[3] = Triangle(
+        Vertex(vec3(-1.0, 1.0, -1.0), normal),
+        Vertex(vec3(1.0, 1.0, 1.0), normal),
+        Vertex(vec3(-1.0, 1.0, 1.0), normal),
+        vec3(9.9, 9.9, 9.9),
+        grayMat
+    );
 
     // Back wall
-    triangles[4] = Triangle(vec3(-1.0, -1.0, 1.0), vec3(1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0), vec3(9.9, 9.9, 9.9), grayMat);
-    triangles[5] = Triangle(vec3(-1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0), vec3(-1.0, 1.0, 1.0), vec3(9.9, 9.9, 9.9), grayMat);
+    triangles[4] = Triangle(
+        Vertex(vec3(-1.0, -1.0, 1.0), normal),
+        Vertex(vec3(1.0, -1.0, 1.0), normal),
+        Vertex(vec3(1.0, 1.0, 1.0), normal),
+        vec3(9.9, 9.9, 9.9),
+        grayMat
+    );
+    triangles[5] = Triangle(
+        Vertex(vec3(-1.0, -1.0, 1.0), normal),
+        Vertex(vec3(1.0, 1.0, 1.0), normal),
+        Vertex(vec3(-1.0, 1.0, 1.0), normal),
+        vec3(9.9, 9.9, 9.9),
+        grayMat
+    );
 
     // Left wall (red)
-    triangles[6] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(-1.0, -1.0, 1.0), vec3(-1.0, 1.0, 1.0), vec3(9.9, 9.9, 9.9), redMat);
-    triangles[7] = Triangle(vec3(-1.0, -1.0, -1.0), vec3(-1.0, 1.0, 1.0), vec3(-1.0, 1.0, -1.0), vec3(9.9, 9.9, 9.9), redMat);
+    triangles[6] = Triangle(
+        Vertex(vec3(-1.0, -1.0, -1.0), normal),
+        Vertex(vec3(-1.0, -1.0, 1.0), normal),
+        Vertex(vec3(-1.0, 1.0, 1.0), normal),
+        vec3(9.9, 9.9, 9.9),
+        redMat
+    );
+    triangles[7] = Triangle(
+        Vertex(vec3(-1.0, -1.0, -1.0), normal),
+        Vertex(vec3(-1.0, 1.0, 1.0), normal),
+        Vertex(vec3(-1.0, 1.0, -1.0), normal),
+        vec3(9.9, 9.9, 9.9),
+        redMat
+    );
 
     // Right wall (green)
-    triangles[8] = Triangle(vec3(1.0, -1.0, -1.0), vec3(1.0, -1.0, 1.0), vec3(1.0, 1.0, 1.0), vec3(9.9, 9.9, 9.9), greenMat);
-    triangles[9] = Triangle(vec3(1.0, -1.0, -1.0), vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, -1.0), vec3(9.9, 9.9, 9.9), greenMat);
+    triangles[8] = Triangle(
+        Vertex(vec3(1.0, -1.0, -1.0), normal),
+        Vertex(vec3(1.0, -1.0, 1.0), normal),
+        Vertex(vec3(1.0, 1.0, 1.0), normal),
+        vec3(9.9, 9.9, 9.9),
+        greenMat
+    );
+    triangles[9] = Triangle(
+        Vertex(vec3(1.0, -1.0, -1.0), normal),
+        Vertex(vec3(1.0, 1.0, 1.0), normal),
+        Vertex(vec3(1.0, 1.0, -1.0), normal),
+        vec3(9.9, 9.9, 9.9),
+        greenMat
+    );
 
-    triangles[10] = Triangle(vec3(-0.5, 0.99, -0.5), vec3(0.5, 0.99, -0.5), vec3(0.5, 0.99, 0.5), vec3(9.9, 9.9, 9.9), lightMat);
-    triangles[11] = Triangle(vec3(-0.5, 0.99, -0.5), vec3(0.5, 0.99, 0.5), vec3(-0.5, 0.99, 0.5), vec3(9.9, 9.9, 9.9), lightMat);
+    triangles[10] = Triangle(
+        Vertex(vec3(-0.5, 0.99, -1.5), normal),
+        Vertex(vec3(0.5, 0.99, -1.5), normal),
+        Vertex(vec3(0.5, 0.99, 0.5), normal),
+        vec3(9.9, 9.9, 9.9),
+        lightMat
+    );
+    triangles[11] = Triangle(
+        Vertex(vec3(-0.5, 0.99, -1.5), normal),
+        Vertex(vec3(0.5, 0.99, 0.5), normal),
+        Vertex(vec3(-0.5, 0.99, 0.5), normal),
+        vec3(9.9, 9.9, 9.9),
+        lightMat
+    );
 
     return triangles;
 }
+
 // ====================================
 
 
@@ -166,9 +245,9 @@ HitInfo rayTriangleIntersect(Ray ray, Triangle tri) {
     hi.hit = false;
     hi.dist = -1.0;
 
-    vec3 v1v0 = tri.v1 - tri.v0;
-    vec3 v2v0 = tri.v2 - tri.v0;
-    vec3 rov0 = ray.ro - tri.v0;
+    vec3 v1v0 = tri.v1.position - tri.v0.position;
+    vec3 v2v0 = tri.v2.position - tri.v0.position;
+    vec3 rov0 = ray.ro - tri.v0.position;
     vec3 n = cross(v1v0, v2v0);
 
     vec3 q = cross(rov0, ray.rd);
@@ -191,27 +270,20 @@ HitInfo rayTriangleIntersect(Ray ray, Triangle tri) {
     return hi;
 }
 
-HitInfo rayAABBIntersect(Ray ray, vec3 bmin, vec3 bmax) {
-    HitInfo hi;
-    hi.hit = false;
-    hi.dist = -1.0;
-
-    vec3 invRd = 1.0 / ray.rd;
-    vec3 t1 = (bmin - ray.ro) * invRd;
-    vec3 t2 = (bmax - ray.ro) * invRd;
-
-    vec3 tmin = min(t1, t2);
-    vec3 tmax = max(t1, t2);
-
-    float tmin_max = max(max(tmin.x, tmin.y), tmin.z);
-    float tmax_min = min(min(tmax.x, tmax.y), tmax.z);
-
-    if(tmin_max <= tmax_min){
-        hi.hit = true;
-        hi.dist = tmin_max;
-    }
-
-    return hi;
+bool rayAABBIntersect(Ray ray, vec3 bmin, vec3 bmax) {
+    float tx1 = (bmin.x - ray.ro.x) / ray.rd.x;
+    float tx2 = (bmax.x - ray.ro.x) / ray.rd.x;
+    float tmin = min(tx1, tx2);
+    float tmax = max(tx1, tx2);
+    float ty1 = (bmin.y - ray.ro.y) / ray.rd.y;
+    float ty2 = (bmax.y - ray.ro.y) / ray.rd.y;
+    tmin = max(tmin, min(ty1, ty2));
+    tmax = min(tmax, max(ty1, ty2));
+    float tz1 = (bmin.z - ray.ro.z) / ray.rd.z;
+    float tz2 = (bmax.z - ray.ro.z) / ray.rd.z;
+    tmin = max(tmin, min(tz1, tz2));
+    tmax = min(tmax, max(tz1, tz2));
+    return tmax >= tmin && tmax > 0;
 }
 
 // ====================================
@@ -223,12 +295,12 @@ HitInfo intersects(Ray ray) {
 
     Triangle cornell[12] = buildTestBox();
 
-//    for (int i = 0; i < u_nSpheres; i++) {
-//        HitInfo sphereHi = raySphereIntersect(ray, spheres[i]);
-//        if (sphereHi.hit && (!hi.hit || sphereHi.dist < hi.dist)) {
-//            hi = sphereHi;
-//        }
-//    }
+    for (int i = 0; i < u_nSpheres; i++) {
+        HitInfo sphereHi = raySphereIntersect(ray, spheres[i]);
+        if (sphereHi.hit && (!hi.hit || sphereHi.dist < hi.dist)) {
+            hi = sphereHi;
+        }
+    }
     for (int i = 0; i < 12; i++) {
         HitInfo triangleHi = rayTriangleIntersect(ray, cornell[i]);
         if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
@@ -238,32 +310,25 @@ HitInfo intersects(Ray ray) {
 
 
     uint currentNodeIndex = 0;
-    if(rayAABBIntersect(ray, nodes[0].aabbMin, nodes[0].aabbMax).hit){
-        for(int i = 0; i < u_nodesDepth; i++) {
-            Node testNode = nodes[currentNodeIndex];
-            if(testNode.primCount > 0)
-                break;
+    while (currentNodeIndex != -1) {
+        Node node = nodes[currentNodeIndex];
+        if (rayAABBIntersect(ray, node.aabbMin, node.aabbMax)) {
 
-            HitInfo hiLeft = rayAABBIntersect(ray, nodes[testNode.leftChild].aabbMin, nodes[testNode.leftChild].aabbMax);
-            HitInfo hiRight = rayAABBIntersect(ray, nodes[testNode.rightChild].aabbMin, nodes[testNode.rightChild].aabbMax);
-
-            if(hiLeft.hit && !hiRight.hit)
-                currentNodeIndex = testNode.leftChild;
-            if(!hiLeft.hit && hiRight.hit)
-                currentNodeIndex = testNode.rightChild;
-            if(hiLeft.hit && hiRight.hit)
-                currentNodeIndex =  hiLeft.dist <= hiRight.dist ?  testNode.leftChild : testNode.rightChild;
-
-        }
-
-        for (uint i = nodes[currentNodeIndex].firstPrim; i < nodes[currentNodeIndex].firstPrim + nodes[currentNodeIndex].primCount; i++) {
-            HitInfo triangleHi = rayTriangleIntersect(ray, triangles[i]);
-            if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
-                hi = triangleHi;
+            if (node.primCount > 0) {
+                for (uint i = nodes[currentNodeIndex].firstPrim; i < nodes[currentNodeIndex].firstPrim + nodes[currentNodeIndex].primCount; i++) {
+                    HitInfo triangleHi = rayTriangleIntersect(ray, triangles[i]);
+                    if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
+                        hi = triangleHi;
+                    }
+                }
             }
-        }
+            currentNodeIndex = node.hitLink;
 
+        } else {
+            currentNodeIndex = node.missLink;
+        }
     }
+
 
     return hi;
 }
@@ -300,7 +365,7 @@ vec3 trace(Ray ray, inout uint seed) {
         // early stoppage
         // https://blog.demofox.org/2020/06/06/casual-shadertoy-path-tracing-2-image-improvement-and-glossy-reflections/
         float p = max(rayCol.r, max(rayCol.g, rayCol.b));
-        if (randomFloat01(seed) > p){
+        if (randomFloat01(seed) > p) {
             break;
         }
         // Add the energy we 'lose' by randomly terminating paths
