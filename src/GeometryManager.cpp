@@ -51,7 +51,7 @@ namespace rt {
                 {0.9f, 0.9f, 0.9f},
                 0.0,
                 0.0,
-                0.15,
+                0.25,
                 {7.7, 7.7}
         };
 
@@ -93,6 +93,23 @@ namespace rt {
                     } else {
                         triangle.v2.position = {vx, vy, vz};
                     }
+
+
+
+                    if (idx.normal_index >= 0) {
+                        tinyobj::real_t nx = attrib.normals[3*size_t(idx.normal_index)+0];
+                        tinyobj::real_t ny = attrib.normals[3*size_t(idx.normal_index)+1];
+                        tinyobj::real_t nz = attrib.normals[3*size_t(idx.normal_index)+2];
+
+                        if (v == 0) {
+                            triangle.v0.normal = {nx, ny, nz};
+                        } else if (v == 1) {
+                            triangle.v1.normal = {nx, ny, nz};
+                        } else {
+                            triangle.v2.normal = {nx, ny, nz};
+                        }
+                    }
+
                 }
 
                 // Set the material for the triangle

@@ -19,14 +19,6 @@ struct Ray {
     vec3 rd;
 };
 
-struct HitInfo {
-    bool hit;
-    float dist;
-    vec3 pos;
-    vec3 normal;
-    Material material;
-};
-
 struct Sphere {
     // base alignment   // aligned offset
     vec3 pos;           // 12               // 0
@@ -52,6 +44,16 @@ struct Node {
     int hitLink;
     int missLink;
 }; // 48 bytes
+
+struct HitInfo {
+    bool hit;
+    float dist;
+    vec3 pos;
+    vec3 normal;
+    Material material;
+    Triangle tri;
+    bool isTriangle;
+};
 
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout (rgba32f, binding = 0) uniform image2D imgOutput;
@@ -82,7 +84,7 @@ uniform int u_nTriangles;
 
 // ========= TEST BOX =========
 Triangle[12] buildTestBox() {
-    Material grayMat = Material(vec3(0.7, 0.7, 0.7), 0.0, 0.5, 0.5);
+    Material grayMat = Material(vec3(0.7, 0.7, 0.7), 0.0, 0.0, 0.9);
     Material redMat = Material(vec3(0.7, 0.1, 0.1), 0.0, 0.7, 0.5);
     Material greenMat = Material(vec3(0.1, 0.7, 0.1), 0.0, 0.7, 0.5);
     Material lightMat = Material(vec3(1.0, 1.0, 1.0), 6.0, 0.7, 0.5);
@@ -286,6 +288,21 @@ bool rayAABBIntersect(Ray ray, vec3 bmin, vec3 bmax) {
     return tmax >= tmin && tmax > 0;
 }
 
+vec3 calculateBarycentric(vec3 pos, vec3 a, vec3 b, vec3 c)
+{
+    vec3 v0 = b - a; vec3 v1 = c - a; vec3 v2 = pos - a;
+    float d00 = dot(v0, v0);
+    float d01 = dot(v0, v1);
+    float d11 = dot(v1, v1);
+    float d20 = dot(v2, v0);
+    float d21 = dot(v2, v1);
+    float denom = d00 * d11 - d01 * d01;
+    vec3 bar;
+    bar.y = (d11 * d20 - d01 * d21) / denom;
+    bar.z = (d00 * d21 - d01 * d20) / denom;
+    bar.x = 1.0f - bar.y - bar.z;
+    return bar;
+}
 // ====================================
 
 
@@ -319,6 +336,8 @@ HitInfo intersects(Ray ray) {
                     HitInfo triangleHi = rayTriangleIntersect(ray, triangles[i]);
                     if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
                         hi = triangleHi;
+                        hi.tri = triangles[i];
+                        hi.isTriangle = true;
                     }
                 }
             }
@@ -347,6 +366,10 @@ vec3 trace(Ray ray, inout uint seed) {
         //                                                                  that have been hit so far (explaing the * col)
         pixelColor += (hi.material.diffuseCol * hi.material.emissiveStrength) * rayCol;
         rayCol *= hi.material.diffuseCol;
+        if(hi.isTriangle){
+            vec3 bar = calculateBarycentric(hi.pos, hi.tri.v0.position, hi.tri.v1.position, hi.tri.v2.position);
+            hi.normal = bar.x * hi.tri.v0.normal + bar.y * hi.tri.v1.normal + bar.z * hi.tri.v2.normal;
+        }
 
         Ray newRay;
         newRay.ro = hi.pos + hi.normal * 0.001;
