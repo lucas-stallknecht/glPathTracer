@@ -28,24 +28,33 @@ namespace rt {
         initializeRenderQuad();
 
         // Scene objects
-        std::vector<Sphere> spheres = GeometryManager::loadRTSpheres(true);
+        std::vector<Sphere> spheres = GeometryManager::loadRTSpheres(false);
         GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
-        std::vector<Triangle> triangles = GeometryManager::loadTrianglesFromFile("../resources/suzanne.obj", true);
+
+        GeometryManager monkey("../resources/suzanne.obj", 1, true);
+        monkey.buildBVH(true);
+        monkey.traverseBVH(0);
+
+        std::vector<Triangle> triangles = monkey.m_triangles;
         GLsizeiptr trianglesVecSize = triangles.size() * sizeof(Triangle);
+
+        std::vector<Node> nodes = monkey.m_nodes;
+        GLsizeiptr nodesVecSize = nodes.size() * sizeof(Node);
 
         glGenBuffers(1, &m_ssbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize, nullptr, GL_STATIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize + nodesVecSize, nullptr, GL_STATIC_DRAW);
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, m_ssbo, 0 , sphereVecSize);
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sphereVecSize, spheres.data());
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 2, m_ssbo, sphereVecSize , trianglesVecSize);
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, sphereVecSize, trianglesVecSize, triangles.data());
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 3, m_ssbo, sphereVecSize + trianglesVecSize , nodesVecSize);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize, nodesVecSize, nodes.data());
 
         m_compShader->use();
         m_compShader->setUniform1i("u_nSpheres", spheres.size());
         m_compShader->setUniform1i("u_nTriangles", triangles.size());
-
-        std::cout << "miaou" << sizeof(glm::vec3) << std::endl;
+        m_compShader->setUniform1i("u_nodesDepth", 1);
     }
 
     void Renderer::initializeRenderQuad() {

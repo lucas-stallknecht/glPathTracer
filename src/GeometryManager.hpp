@@ -38,21 +38,31 @@ namespace rt {
     struct Node{
         // axis aligned bounding box
         glm::vec3 aabbMin;
-        glm::vec3 aabbMax;
         unsigned int leftChild;
+        glm::vec3 aabbMax;
         unsigned int rightChild;
         unsigned int firstPrim;
         unsigned int primCount;
+        glm::vec2 padding;
     };
 
     class GeometryManager {
-    private:
-        int m_nodesUsed = 1;
     public:
+        GeometryManager(const std::string& objPath, int depth, bool log=false);
         static std::vector<Sphere> loadRTSpheres(bool log=false);
-        static std::vector<Triangle> loadTrianglesFromFile(const std::string& objPath, bool log=false);
-        std::vector<Node> buildBVH(std::vector<Triangle>& triangles, unsigned int nBoxes);
-        void updateNodeBounds(std::vector<Triangle>& triangles, std::vector<Node>& nodes, unsigned int nodeIndex);
-        void subdivide(std::vector<Triangle>& triangles, std::vector<Node>& nodes, unsigned int nodeIndex);
+        void buildBVH(bool log=false);
+        void traverseBVH(unsigned int index);
+
+        std::vector<Triangle> m_triangles;
+        std::vector<Node> m_nodes;
+
+    private:
+        void loadTrianglesFromFile(const std::string& objPath, bool log=false);
+
+        void updateNodeBounds(unsigned int nodeIndex);
+        void subdivide(unsigned int nodeIndex, int currentDepth);
+
+        int m_nodesUsed = 1;
+        int m_maxDepth;
     };
 };

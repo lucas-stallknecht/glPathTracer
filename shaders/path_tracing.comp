@@ -37,6 +37,14 @@ struct Triangle {
     Material material;
 };                      // 12*3 + 4*3 + 32 = 80 bytes total
 
+struct Node {
+    vec3 aabbMin;
+    uint leftChild;
+    vec3 aabbMax;
+    uint rightChild;
+    uint firstPrim;
+    uint primCount;
+}; // 48 bytes
 
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout (rgba32f, binding = 0) uniform image2D imgOutput;
@@ -46,6 +54,9 @@ layout (std430, binding = 1) readonly buffer spheresBuffer {
 };
 layout (std430, binding = 2) readonly buffer trianglesBuffer {
     Triangle[] triangles;
+};
+layout (std430, binding = 3) readonly buffer nodesBuffer {
+    Node[] nodes;
 };
 
 // Render uniforms
@@ -60,6 +71,8 @@ uniform mat4 invProjection;
 // Geometries uniform
 uniform int u_nSpheres;
 uniform int u_nTriangles;
+uniform int u_nNodes;
+uniform int u_nodesDepth;
 
 
 // ========= TEST BOX =========
@@ -178,19 +191,29 @@ HitInfo rayTriangleIntersect(Ray ray, Triangle tri) {
     return hi;
 }
 
+HitInfo rayAABBIntersect(Ray ray, vec3 bmin, vec3 bmax) {
+    HitInfo hi;
+    hi.hit = false;
+    hi.dist = -1.0;
 
-bool boxIntersection(Ray ray, vec3 boxSize)
-{
-    vec3 m = 1.0 / ray.rd;
-    vec3 n = m * ray.ro;
-    vec3 k = abs(m) * boxSize;
-    vec3 t1 = -n - k;
-    vec3 t2 = -n + k;
-    float tN = max(max(t1.x, t1.y), t1.z);
-    float tF = min(min(t2.x, t2.y), t2.z);
-    if (tN > tF || tF < 0.0) return false; // no intersection
-    return true;
+    vec3 invRd = 1.0 / ray.rd;
+    vec3 t1 = (bmin - ray.ro) * invRd;
+    vec3 t2 = (bmax - ray.ro) * invRd;
+
+    vec3 tmin = min(t1, t2);
+    vec3 tmax = max(t1, t2);
+
+    float tmin_max = max(max(tmin.x, tmin.y), tmin.z);
+    float tmax_min = min(min(tmax.x, tmax.y), tmax.z);
+
+    if(tmin_max <= tmax_min){
+        hi.hit = true;
+        hi.dist = tmin_max;
+    }
+
+    return hi;
 }
+
 // ====================================
 
 
@@ -198,29 +221,49 @@ HitInfo intersects(Ray ray) {
     HitInfo hi;
     hi.hit = false;
 
-    Triangle box[12] = buildTestBox();
+    Triangle cornell[12] = buildTestBox();
 
-    for (int i = 0; i < u_nSpheres; i++) {
-        HitInfo sphereHi = raySphereIntersect(ray, spheres[i]);
-        if (sphereHi.hit && (!hi.hit || sphereHi.dist < hi.dist)) {
-            hi = sphereHi;
-        }
-    }
+//    for (int i = 0; i < u_nSpheres; i++) {
+//        HitInfo sphereHi = raySphereIntersect(ray, spheres[i]);
+//        if (sphereHi.hit && (!hi.hit || sphereHi.dist < hi.dist)) {
+//            hi = sphereHi;
+//        }
+//    }
     for (int i = 0; i < 12; i++) {
-        HitInfo triangleHi = rayTriangleIntersect(ray, box[i]);
+        HitInfo triangleHi = rayTriangleIntersect(ray, cornell[i]);
         if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
             hi = triangleHi;
         }
     }
 
-    bool monkeyBoundingBox = boxIntersection(ray, vec3(0.5));
-    if(monkeyBoundingBox)
-        for (int i = 0; i < u_nTriangles; i++) {
+
+    uint currentNodeIndex = 0;
+    if(rayAABBIntersect(ray, nodes[0].aabbMin, nodes[0].aabbMax).hit){
+        for(int i = 0; i < u_nodesDepth; i++) {
+            Node testNode = nodes[currentNodeIndex];
+            if(testNode.primCount > 0)
+                break;
+
+            HitInfo hiLeft = rayAABBIntersect(ray, nodes[testNode.leftChild].aabbMin, nodes[testNode.leftChild].aabbMax);
+            HitInfo hiRight = rayAABBIntersect(ray, nodes[testNode.rightChild].aabbMin, nodes[testNode.rightChild].aabbMax);
+
+            if(hiLeft.hit && !hiRight.hit)
+                currentNodeIndex = testNode.leftChild;
+            if(!hiLeft.hit && hiRight.hit)
+                currentNodeIndex = testNode.rightChild;
+            if(hiLeft.hit && hiRight.hit)
+                currentNodeIndex =  hiLeft.dist <= hiRight.dist ?  testNode.leftChild : testNode.rightChild;
+
+        }
+
+        for (uint i = nodes[currentNodeIndex].firstPrim; i < nodes[currentNodeIndex].firstPrim + nodes[currentNodeIndex].primCount; i++) {
             HitInfo triangleHi = rayTriangleIntersect(ray, triangles[i]);
             if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
                 hi = triangleHi;
             }
         }
+
+    }
 
     return hi;
 }
