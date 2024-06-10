@@ -35,8 +35,7 @@ namespace rt {
         Vertex v1;
         Vertex v2;
         glm::vec3 centroid;
-        float pad1;
-        Material material;
+        int matIndex;
     };
 
     struct Node{
@@ -60,6 +59,7 @@ namespace rt {
 
         std::vector<Triangle> m_triangles;
         std::vector<Node> m_nodes;
+        std::vector<Material> m_materials;
 
     private:
         void loadTrianglesFromFile(const std::string& objPath, bool log=false);

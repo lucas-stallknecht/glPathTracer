@@ -12,7 +12,7 @@ struct Material {
     float emissiveStrength; // 4
     float roughness; // 4
     float specularPerc; // 4
-};
+}; // 32 bytes with the padding[2]
 
 struct Ray {
     vec3 ro;
@@ -31,8 +31,8 @@ struct Triangle {
     Vertex v1;
     Vertex v2;
     vec3 centroid_;
-    Material material;
-};                      // 32*3 + 16 + 32 = 144 bytes total
+    int matIndex;
+};                      // 32*3 + 12 + 4 = 112 bytes total
 
 struct Node {
     vec3 aabbMin;
@@ -67,6 +67,9 @@ layout (std430, binding = 2) readonly buffer trianglesBuffer {
 layout (std430, binding = 3) readonly buffer nodesBuffer {
     Node[] nodes;
 };
+layout (std430, binding = 4) readonly buffer materialsBuffer {
+    Material[] materials;
+};
 
 // Render uniforms
 uniform int u_frame;
@@ -83,111 +86,111 @@ uniform int u_nTriangles;
 
 
 // ========= TEST BOX =========
-Triangle[12] buildTestBox() {
-    Material grayMat = Material(vec3(0.7, 0.7, 0.7), 0.0, 0.0, 0.9);
-    Material redMat = Material(vec3(0.7, 0.1, 0.1), 0.0, 0.7, 0.5);
-    Material greenMat = Material(vec3(0.1, 0.7, 0.1), 0.0, 0.7, 0.5);
-    Material lightMat = Material(vec3(1.0, 1.0, 1.0), 6.0, 0.7, 0.5);
-
-    Triangle triangles[12];
-    vec3 normal = vec3(0.0, 1.0, 0.0); // Assuming a default normal for all vertices
-
-    // Floor
-    triangles[0] = Triangle(
-        Vertex(vec3(-1.0, -1.0, -1.0), normal),
-        Vertex(vec3(1.0, -1.0, -1.0), normal),
-        Vertex(vec3(1.0, -1.0, 1.0), normal),
-        vec3(9.9, 9.9, 9.9),
-        grayMat);
-    triangles[1] = Triangle(
-        Vertex(vec3(-1.0, -1.0, -1.0), normal),
-        Vertex(vec3(1.0, -1.0, 1.0), normal),
-        Vertex(vec3(-1.0, -1.0, 1.0), normal),
-        vec3(9.9, 9.9, 9.9),
-        grayMat
-    );
-
-    // Ceiling
-    triangles[2] = Triangle(
-        Vertex(vec3(-1.0, 1.0, -1.0), normal),
-        Vertex(vec3(1.0, 1.0, -1.0), normal),
-        Vertex(vec3(1.0, 1.0, 1.0), normal),
-        vec3(9.9, 9.9, 9.9),
-        grayMat
-    );
-    triangles[3] = Triangle(
-        Vertex(vec3(-1.0, 1.0, -1.0), normal),
-        Vertex(vec3(1.0, 1.0, 1.0), normal),
-        Vertex(vec3(-1.0, 1.0, 1.0), normal),
-        vec3(9.9, 9.9, 9.9),
-        grayMat
-    );
-
-    // Back wall
-    triangles[4] = Triangle(
-        Vertex(vec3(-1.0, -1.0, 1.0), normal),
-        Vertex(vec3(1.0, -1.0, 1.0), normal),
-        Vertex(vec3(1.0, 1.0, 1.0), normal),
-        vec3(9.9, 9.9, 9.9),
-        grayMat
-    );
-    triangles[5] = Triangle(
-        Vertex(vec3(-1.0, -1.0, 1.0), normal),
-        Vertex(vec3(1.0, 1.0, 1.0), normal),
-        Vertex(vec3(-1.0, 1.0, 1.0), normal),
-        vec3(9.9, 9.9, 9.9),
-        grayMat
-    );
-
-    // Left wall (red)
-    triangles[6] = Triangle(
-        Vertex(vec3(-1.0, -1.0, -1.0), normal),
-        Vertex(vec3(-1.0, -1.0, 1.0), normal),
-        Vertex(vec3(-1.0, 1.0, 1.0), normal),
-        vec3(9.9, 9.9, 9.9),
-        redMat
-    );
-    triangles[7] = Triangle(
-        Vertex(vec3(-1.0, -1.0, -1.0), normal),
-        Vertex(vec3(-1.0, 1.0, 1.0), normal),
-        Vertex(vec3(-1.0, 1.0, -1.0), normal),
-        vec3(9.9, 9.9, 9.9),
-        redMat
-    );
-
-    // Right wall (green)
-    triangles[8] = Triangle(
-        Vertex(vec3(1.0, -1.0, -1.0), normal),
-        Vertex(vec3(1.0, -1.0, 1.0), normal),
-        Vertex(vec3(1.0, 1.0, 1.0), normal),
-        vec3(9.9, 9.9, 9.9),
-        greenMat
-    );
-    triangles[9] = Triangle(
-        Vertex(vec3(1.0, -1.0, -1.0), normal),
-        Vertex(vec3(1.0, 1.0, 1.0), normal),
-        Vertex(vec3(1.0, 1.0, -1.0), normal),
-        vec3(9.9, 9.9, 9.9),
-        greenMat
-    );
-
-    triangles[10] = Triangle(
-        Vertex(vec3(-0.5, 0.99, -1.5), normal),
-        Vertex(vec3(0.5, 0.99, -1.5), normal),
-        Vertex(vec3(0.5, 0.99, 0.5), normal),
-        vec3(9.9, 9.9, 9.9),
-        lightMat
-    );
-    triangles[11] = Triangle(
-        Vertex(vec3(-0.5, 0.99, -1.5), normal),
-        Vertex(vec3(0.5, 0.99, 0.5), normal),
-        Vertex(vec3(-0.5, 0.99, 0.5), normal),
-        vec3(9.9, 9.9, 9.9),
-        lightMat
-    );
-
-    return triangles;
-}
+// Triangle[12] buildTestBox() {
+//    Material grayMat = Material(vec3(0.7, 0.7, 0.7), 0.0, 0.0, 0.9);
+//    Material redMat = Material(vec3(0.7, 0.1, 0.1), 0.0, 0.7, 0.5);
+//    Material greenMat = Material(vec3(0.1, 0.7, 0.1), 0.0, 0.7, 0.5);
+//    Material lightMat = Material(vec3(1.0, 1.0, 1.0), 6.0, 0.7, 0.5);
+//
+//    Triangle triangles[12];
+//    vec3 normal = vec3(0.0, 1.0, 0.0); // Assuming a default normal for all vertices
+//
+//    // Floor
+//    triangles[0] = Triangle(
+//        Vertex(vec3(-1.0, -1.0, -1.0), normal),
+//        Vertex(vec3(1.0, -1.0, -1.0), normal),
+//        Vertex(vec3(1.0, -1.0, 1.0), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        grayMat);
+//    triangles[1] = Triangle(
+//        Vertex(vec3(-1.0, -1.0, -1.0), normal),
+//        Vertex(vec3(1.0, -1.0, 1.0), normal),
+//        Vertex(vec3(-1.0, -1.0, 1.0), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        grayMat
+//    );
+//
+//    // Ceiling
+//    triangles[2] = Triangle(
+//        Vertex(vec3(-1.0, 1.0, -1.0), normal),
+//        Vertex(vec3(1.0, 1.0, -1.0), normal),
+//        Vertex(vec3(1.0, 1.0, 1.0), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        grayMat
+//    );
+//    triangles[3] = Triangle(
+//        Vertex(vec3(-1.0, 1.0, -1.0), normal),
+//        Vertex(vec3(1.0, 1.0, 1.0), normal),
+//        Vertex(vec3(-1.0, 1.0, 1.0), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        grayMat
+//    );
+//
+//    // Back wall
+//    triangles[4] = Triangle(
+//        Vertex(vec3(-1.0, -1.0, 1.0), normal),
+//        Vertex(vec3(1.0, -1.0, 1.0), normal),
+//        Vertex(vec3(1.0, 1.0, 1.0), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        grayMat
+//    );
+//    triangles[5] = Triangle(
+//        Vertex(vec3(-1.0, -1.0, 1.0), normal),
+//        Vertex(vec3(1.0, 1.0, 1.0), normal),
+//        Vertex(vec3(-1.0, 1.0, 1.0), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        grayMat
+//    );
+//
+//    // Left wall (red)
+//    triangles[6] = Triangle(
+//        Vertex(vec3(-1.0, -1.0, -1.0), normal),
+//        Vertex(vec3(-1.0, -1.0, 1.0), normal),
+//        Vertex(vec3(-1.0, 1.0, 1.0), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        redMat
+//    );
+//    triangles[7] = Triangle(
+//        Vertex(vec3(-1.0, -1.0, -1.0), normal),
+//        Vertex(vec3(-1.0, 1.0, 1.0), normal),
+//        Vertex(vec3(-1.0, 1.0, -1.0), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        redMat
+//    );
+//
+//    // Right wall (green)
+//    triangles[8] = Triangle(
+//        Vertex(vec3(1.0, -1.0, -1.0), normal),
+//        Vertex(vec3(1.0, -1.0, 1.0), normal),
+//        Vertex(vec3(1.0, 1.0, 1.0), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        greenMat
+//    );
+//    triangles[9] = Triangle(
+//        Vertex(vec3(1.0, -1.0, -1.0), normal),
+//        Vertex(vec3(1.0, 1.0, 1.0), normal),
+//        Vertex(vec3(1.0, 1.0, -1.0), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        greenMat
+//    );
+//
+//    triangles[10] = Triangle(
+//        Vertex(vec3(-0.5, 0.99, -1.5), normal),
+//        Vertex(vec3(0.5, 0.99, -1.5), normal),
+//        Vertex(vec3(0.5, 0.99, 0.5), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        lightMat
+//    );
+//    triangles[11] = Triangle(
+//        Vertex(vec3(-0.5, 0.99, -1.5), normal),
+//        Vertex(vec3(0.5, 0.99, 0.5), normal),
+//        Vertex(vec3(-0.5, 0.99, 0.5), normal),
+//        vec3(9.9, 9.9, 9.9),
+//        lightMat
+//    );
+//
+//    return triangles;
+//}
 
 // ====================================
 
@@ -266,7 +269,7 @@ HitInfo rayTriangleIntersect(Ray ray, Triangle tri) {
             n = -n;  // Flip the normal if it's not facing the ray origin
         }
         hi.normal = normalize(n);
-        hi.material = tri.material;
+        hi.material = materials[tri.matIndex];
     }
 
     return hi;
@@ -310,7 +313,7 @@ HitInfo intersects(Ray ray) {
     HitInfo hi;
     hi.hit = false;
 
-    Triangle cornell[12] = buildTestBox();
+    // Triangle cornell[12] = buildTestBox();
 
     for (int i = 0; i < u_nSpheres; i++) {
         HitInfo sphereHi = raySphereIntersect(ray, spheres[i]);
@@ -318,12 +321,12 @@ HitInfo intersects(Ray ray) {
             hi = sphereHi;
         }
     }
-    for (int i = 0; i < 12; i++) {
-        HitInfo triangleHi = rayTriangleIntersect(ray, cornell[i]);
-        if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
-            hi = triangleHi;
-        }
-    }
+//    for (int i = 0; i < 12; i++) {
+//        HitInfo triangleHi = rayTriangleIntersect(ray, cornell[i]);
+//        if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
+//            hi = triangleHi;
+//        }
+//    }
 
 
     uint currentNodeIndex = 0;
@@ -366,6 +369,7 @@ vec3 trace(Ray ray, inout uint seed) {
         //                                                                  that have been hit so far (explaing the * col)
         pixelColor += (hi.material.diffuseCol * hi.material.emissiveStrength) * rayCol;
         rayCol *= hi.material.diffuseCol;
+
         if(hi.isTriangle){
             vec3 bar = calculateBarycentric(hi.pos, hi.tri.v0.position, hi.tri.v1.position, hi.tri.v2.position);
             hi.normal = bar.x * hi.tri.v0.normal + bar.y * hi.tri.v1.normal + bar.z * hi.tri.v2.normal;
@@ -430,6 +434,7 @@ void main() {
     // accumulation
     vec3 colPrev = imageLoad(imgOutput, texelCoord).rgb;
     col = mix(colPrev, col, 1.0 / (float(u_frame) + 1));
+
 
     imageStore(imgOutput, texelCoord, vec4(col, 1.0));
 }

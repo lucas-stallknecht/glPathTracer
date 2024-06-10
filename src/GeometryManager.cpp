@@ -47,15 +47,10 @@ namespace rt {
     void GeometryManager::loadTrianglesFromFile(const std::string &objPath, bool log) {
 
         std::vector<Triangle> triangles;
-        Material glowingTest{
-                {0.9f, 0.9f, 0.9f},
-                0.0,
-                0.0,
-                0.25,
-                {7.7, 7.7}
-        };
+        std::vector<Material> materials;
 
         tinyobj::ObjReaderConfig reader_config;
+        reader_config.mtl_search_path = "../resources/";
         tinyobj::ObjReader reader;
 
         if (!reader.ParseFromFile(objPath, reader_config)) {
@@ -70,6 +65,7 @@ namespace rt {
 
         auto &attrib = reader.GetAttrib();
         auto &shapes = reader.GetShapes();
+        auto &mats = reader.GetMaterials();
 
         // Loop over shapes
         for (size_t s = 0; s < shapes.size(); s++) {
@@ -112,8 +108,7 @@ namespace rt {
 
                 }
 
-                // Set the material for the triangle
-                triangle.material = glowingTest;
+                triangle.matIndex = shapes[s].mesh.material_ids[f];
 
                 // Add the triangle to the vector
                 triangles.push_back(triangle);
@@ -122,13 +117,37 @@ namespace rt {
             }
         }
 
+        for (const auto &mat: mats){
+            // loop over materials
+//            Material m{
+//                    glm::vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]),
+//                    mat.emission[0],
+//                    mat.roughness,
+//                    mat.metallic,
+//                    glm::vec2(8.8,8.8)
+//            };
+            Material m{
+                    glm::vec3(0.0, 1.0, 0.7),
+                    1.0,
+                    0.0,
+                    0.0,
+                    glm::vec2(8.8,8.8)
+            };
+            materials.push_back(m);
+        }
+
+
         if (log) {
             std::cout << "Number of triangles : " << triangles.size() << std::endl;
             std::cout << "Size of triangle struct: " << sizeof(Triangle) << std::endl;
             std::cout << "Size of triangles vector: " << triangles.size() * sizeof(Triangle) << std::endl;
+            std::cout << "Number of materials : " << materials.size() << std::endl;
+            std::cout << "Size of material struct: " << sizeof(Material) << std::endl;
+            std::cout << "Size of materials vector: " << materials.size() * sizeof(Material) << std::endl;
         }
 
         m_triangles = triangles;
+        m_materials = materials;
     }
 
     void GeometryManager::buildBVH(bool log){
@@ -255,7 +274,6 @@ namespace rt {
         }
 
     }
-
 
     void GeometryManager::traverseBVH(unsigned int index) {
         Node& node = m_nodes[index];

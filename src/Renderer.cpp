@@ -32,7 +32,7 @@ namespace rt {
         spheres = std::vector<Sphere>(0);
         GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
 
-        GeometryManager monkey("../resources/helmet.obj", 10, true);
+        GeometryManager monkey("../resources/suzanne_2.obj", 8, true);
         monkey.buildBVH(true);
         // monkey.traverseBVH(0);
 
@@ -42,15 +42,20 @@ namespace rt {
         std::vector<Node> nodes = monkey.m_nodes;
         GLsizeiptr nodesVecSize = nodes.size() * sizeof(Node);
 
+        std::vector<Material> materials = monkey.m_materials;
+        GLsizeiptr materialsVecSize = materials.size() * sizeof(Material);
+
         glGenBuffers(1, &m_ssbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize + nodesVecSize, nullptr, GL_STATIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize + nodesVecSize + materialsVecSize, nullptr, GL_STATIC_DRAW);
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, m_ssbo, 0 , sphereVecSize);
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sphereVecSize, spheres.data());
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 2, m_ssbo, sphereVecSize , trianglesVecSize);
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, sphereVecSize, trianglesVecSize, triangles.data());
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 3, m_ssbo, sphereVecSize + trianglesVecSize , nodesVecSize);
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize, nodesVecSize, nodes.data());
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 4, m_ssbo, sphereVecSize + trianglesVecSize + nodesVecSize, materialsVecSize);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize + nodesVecSize, materialsVecSize, materials.data());
 
         m_compShader->use();
         m_compShader->setUniform1i("u_nSpheres", spheres.size());
