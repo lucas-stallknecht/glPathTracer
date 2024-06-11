@@ -119,18 +119,11 @@ namespace rt {
 
         for (const auto &mat: mats){
             // loop over materials
-//            Material m{
-//                    glm::vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]),
-//                    mat.emission[0],
-//                    mat.roughness,
-//                    mat.metallic,
-//                    glm::vec2(8.8,8.8)
-//            };
             Material m{
-                    glm::vec3(0.0, 1.0, 0.7),
-                    1.0,
-                    0.0,
-                    0.0,
+                    glm::vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]),
+                    mat.emission[0],
+                    mat.roughness,
+                    mat.metallic,
                     glm::vec2(8.8,8.8)
             };
             materials.push_back(m);

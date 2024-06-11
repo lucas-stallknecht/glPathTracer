@@ -2,13 +2,13 @@
 
 ![img.png](img.png)
 
-TODO : 
-
+Achievements :
+- [x] Compute shaders
 - [x] Camera controls
-- [x] Multiple rays per pixel
-- [x] Material glossy effect
-- [ ] Triangles 1/2 (stored in compute shader only)
-- [ ] ImGUI 1/2
-- [ ] Proper skybox
-- [ ] Scenes presets
-- [ ] Clean and comment compute shader (ie : u_ before uniforms)
+- [x] Accumulation
+- [x] Glossy and specular reflections 
+- [x] OBJ imports
+- [x] Acceleration structures, BVH (Bounding Volume hierarchy ~~for every shape~~)
+- [x] Smooth shading
+- [ ] HDR integration
+- [ ] Scenes presets / import with ImGUI

@@ -32,7 +32,7 @@ namespace rt {
         spheres = std::vector<Sphere>(0);
         GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
 
-        GeometryManager monkey("../resources/suzanne_2.obj", 8, true);
+        GeometryManager monkey("../resources/test_scene.obj", 1, true);
         monkey.buildBVH(true);
         // monkey.traverseBVH(0);
 
