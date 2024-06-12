@@ -34,6 +34,7 @@ namespace rt {
     private:
         void initializeRenderQuad();
         static void logComputeShaderCapabilities();
+        GLuint loadCubemap(std::vector<std::string> faces);
 
         const int VP_WIDTH, VP_HEIGHT;
         std::unique_ptr<Shader> m_shader;

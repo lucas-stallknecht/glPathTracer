@@ -10,9 +10,15 @@
 
 namespace rt {
 
-    GeometryManager::GeometryManager(const std::string &objPath, int depth, bool log)
-    : m_nodes(std::pow(2, depth + 1) - 1), m_maxDepth(depth), m_parents(std::pow(2, depth + 1) - 1){
+    GeometryManager::GeometryManager(const std::string &objPath, int depth, int matOffset, int triOffset, int nodeOffset, bool lastInChain, bool log)
+    : m_nodes(std::pow(2, depth + 1) - 1), m_maxDepth(depth), m_parents(std::pow(2, depth + 1) - 1)
+    ,m_materialOffset(matOffset) ,m_triangleOffset(triOffset), m_nodeOffset(nodeOffset) {
         loadTrianglesFromFile(objPath, log);
+
+        if(!lastInChain)
+            m_missValue = std::pow(2, depth + 1) - 1;
+
+        buildBVH(log);
     }
 
     std::vector<Sphere> GeometryManager::loadRTSpheres(bool log) {
@@ -108,7 +114,7 @@ namespace rt {
 
                 }
 
-                triangle.matIndex = shapes[s].mesh.material_ids[f];
+                triangle.matIndex = m_materialOffset + shapes[s].mesh.material_ids[f];
 
                 // Add the triangle to the vector
                 triangles.push_back(triangle);
@@ -158,7 +164,7 @@ namespace rt {
 
         Node& root = m_nodes[0];
         root.leftChild = root.rightChild = 0;
-        root.firstPrim = 0;
+        root.firstPrim = m_triangleOffset + 0;
         root.primCount = m_triangles.size();
         m_parents[0] = -1;
 
@@ -174,7 +180,7 @@ namespace rt {
         // checks all the triangles contained in a bounding box and adjusts the min and max pos
         for (unsigned int first = node.firstPrim, i = 0; i < node.primCount; i++)
         {
-            Triangle& leafTri = m_triangles[first + i];
+            Triangle& leafTri = m_triangles[first + i - m_triangleOffset];
             node.aabbMin = glm::min( node.aabbMin, leafTri.v0.position );
             node.aabbMin = glm::min( node.aabbMin, leafTri.v1.position );
             node.aabbMin = glm::min( node.aabbMin, leafTri.v2.position );
@@ -199,10 +205,10 @@ namespace rt {
         unsigned int i = node.firstPrim;
         unsigned int j = i + node.primCount - 1;
         while (i <= j) {
-            if (m_triangles[i].centroid[axis] < splitPos)
+            if (m_triangles[i - m_triangleOffset].centroid[axis] < splitPos)
                 i++;
             else
-                std::swap(m_triangles[i], m_triangles[j--]);
+                std::swap(m_triangles[i - m_triangleOffset], m_triangles[j-- - m_triangleOffset]);
         }
         unsigned int leftCount = i - node.firstPrim;
 
@@ -240,7 +246,7 @@ namespace rt {
         if(requestorIndex > parentNode.leftChild){
             // root of the tree
             if(m_parents[parentIndex] < 0)
-                return -1.0;
+                return m_missValue - m_nodeOffset;
             return getRightChild(m_parents[parentIndex], parentIndex);
         }
 
@@ -253,15 +259,15 @@ namespace rt {
 
         // --- Hit Links
         // if not the root, closest right sibling
-        node.hitLink = m_parents[nodeIndex] < 0 ? -1 : getRightChild(m_parents[nodeIndex], nodeIndex);
+        node.hitLink = m_parents[nodeIndex] < 0 ? m_missValue : getRightChild(m_parents[nodeIndex], nodeIndex) + m_nodeOffset;
 
         // --- Miss Links
         // if not the root, closest right sibling
-        node.missLink = m_parents[nodeIndex] < 0 ? -1 : getRightChild(m_parents[nodeIndex], nodeIndex);
+        node.missLink = m_parents[nodeIndex] < 0 ? m_missValue : getRightChild(m_parents[nodeIndex], nodeIndex) + m_nodeOffset;
 
         // if not a leaf
         if(node.primCount == 0){
-            node.hitLink = (int)node.leftChild;
+            node.hitLink = (int)node.leftChild + m_nodeOffset;
             buildLinks(node.leftChild);
             buildLinks(node.rightChild);
         }
@@ -270,7 +276,7 @@ namespace rt {
 
     void GeometryManager::traverseBVH(unsigned int index) {
         Node& node = m_nodes[index];
-        std::cout << "Index : " << index << " PrimCount : " << node.primCount
+        std::cout << "Index : " << index + m_nodeOffset << " FirstPrim : " << node.firstPrim << " PrimCount : " << node.primCount
         << " Left child : " << node.leftChild << " Right child : " << node.rightChild
         << " Hit_Link : " << node.hitLink << " Miss_Link : " << node.missLink << std::endl;
 

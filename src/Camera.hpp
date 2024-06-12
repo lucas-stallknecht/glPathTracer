@@ -12,7 +12,7 @@ namespace rt {
         static constexpr float CAM_VIEW_SPEED = 0.0007f;
 
     public:
-        glm::vec3 m_camPos = glm::vec3(0.0f, 0.0f, -5.0f);
+        glm::vec3 m_camPos = glm::vec3(0.0f, 0.5f, -5.0f);
         glm::vec3 m_camDir = glm::vec3(0.0f, 0.0f, 1.0f);
         glm::mat4 m_InvProjection;
 

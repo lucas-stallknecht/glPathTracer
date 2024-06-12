@@ -8,7 +8,14 @@ Achievements :
 - [x] Accumulation
 - [x] Glossy and specular reflections 
 - [x] OBJ imports
-- [x] Acceleration structures, BVH (Bounding Volume hierarchy ~~for every shape~~)
+- [x] Acceleration structures, BVH (Bounding Volume hierarchy for every object)
 - [x] Smooth shading
-- [ ] HDR integration
+- [X] HDRI Cubemap
 - [ ] Scenes presets / import with ImGUI
+- [ ] ?? Denoising algorithm ??
+
+Remaining fixes : 
+- Loop over a list of filepath and construct buffers automatically
+- Stop cutting every Bounding Volume in half, uniformly distribute the triangles instead
+- Possibility to disable smooth shading
+- Fix jitter and multiple rays per pixel

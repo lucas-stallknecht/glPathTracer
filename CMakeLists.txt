@@ -23,6 +23,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         ${LIBS_DIR}/glad/include
         ${LIBS_DIR}/imgui
         ${LIBS_DIR}/tinyobjloader
+        ${LIBS_DIR}/stb
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

@@ -3,9 +3,10 @@
 //
 
 #include "Renderer.hpp"
-#include "Shader.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
 #include "GeometryManager.hpp"
 
 namespace rt {
@@ -32,18 +33,40 @@ namespace rt {
         spheres = std::vector<Sphere>(0);
         GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
 
-        GeometryManager monkey("../resources/test_scene.obj", 1, true);
-        monkey.buildBVH(true);
-        // monkey.traverseBVH(0);
 
-        std::vector<Triangle> triangles = monkey.m_triangles;
+        GeometryManager helmet("../resources/helmet.obj", 11, 0, 0, 0, true, false);
+        std::vector<Triangle> triangles = helmet.m_triangles;
+        std::vector<Material> materials = helmet.m_materials;
+        std::vector<Node> nodes = helmet.m_nodes;
+
+//        // ====== MONKEY ========
+//        GeometryManager testScene("../resources/test_scene.obj", 1, 0, 0, 0, false, false);
+//        // testScene.traverseBVH(0);
+//
+//        // ====== TEST SCENE ========
+//        GeometryManager monkey("../resources/suzanne_2.obj", 8, testScene.m_materials.size(),
+//                               testScene.m_triangles.size(), testScene.m_nodes.size(),
+//                               true, false);
+//        // monkey.traverseBVH(0);
+//
+//        // ====== MERGE ========
+//        std::vector<Triangle> triangles = testScene.m_triangles;
+//        triangles.insert(triangles.end(),
+//                         monkey.m_triangles.begin(),
+//                         monkey.m_triangles.end());
+//        std::vector<Node> nodes = testScene.m_nodes;
+//        nodes.insert(nodes.end(),
+//                     monkey.m_nodes.begin(),
+//                     monkey.m_nodes.end());
+//        std::vector<Material> materials = testScene.m_materials;
+//        materials.insert(materials.end(),
+//                         monkey.m_materials.begin(),
+//                         monkey.m_materials.end());
+
+        GLsizeiptr materialsVecSize = materials.size() * sizeof(Material);
         GLsizeiptr trianglesVecSize = triangles.size() * sizeof(Triangle);
-
-        std::vector<Node> nodes = monkey.m_nodes;
         GLsizeiptr nodesVecSize = nodes.size() * sizeof(Node);
 
-        std::vector<Material> materials = monkey.m_materials;
-        GLsizeiptr materialsVecSize = materials.size() * sizeof(Material);
 
         glGenBuffers(1, &m_ssbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
@@ -60,6 +83,52 @@ namespace rt {
         m_compShader->use();
         m_compShader->setUniform1i("u_nSpheres", spheres.size());
         m_compShader->setUniform1i("u_nTriangles", triangles.size());
+
+
+        // Skybox
+        std::vector<std::string> faces
+        {
+            "../resources/skybox_paris/px.png",    // right
+            "../resources/skybox_paris/nx.png",     // left
+            "../resources/skybox_paris/py.png",      // top
+            "../resources/skybox_paris/ny.png",   // bottom
+            "../resources/skybox_paris/pz.png",    // front
+            "../resources/skybox_paris/nz.png"      // back
+        };
+        GLuint cubemapTexture = loadCubemap(faces);
+
+    }
+
+    GLuint Renderer::loadCubemap(std::vector<std::string> faces)
+    {
+        GLuint textureID;
+        glGenTextures(1, &textureID);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+        int width, height, nrChannels;
+        for (unsigned int i = 0; i < faces.size(); i++)
+        {
+            unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+            if (data)
+            {
+                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                             0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+                );
+                stbi_image_free(data);
+            }
+            else
+            {
+                std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
+                stbi_image_free(data);
+            }
+        }
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+        return textureID;
     }
 
     void Renderer::initializeRenderQuad() {

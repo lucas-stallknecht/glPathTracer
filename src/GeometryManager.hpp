@@ -52,7 +52,7 @@ namespace rt {
 
     class GeometryManager {
     public:
-        GeometryManager(const std::string& objPath, int depth, bool log=false);
+        GeometryManager(const std::string& objPath, int depth, int matOffset, int triOffset, int nodeOffset, bool lastInChain, bool log=false);
         static std::vector<Sphere> loadRTSpheres(bool log=false);
         void buildBVH(bool log=false);
         void traverseBVH(unsigned int index);
@@ -74,5 +74,10 @@ namespace rt {
         // gives the parentIndex for a node
         // has been created to avoid exceeding 48 bytes for a node struct
         std::vector<int> m_parents;
+        // since all the triangles are in the same buffer, we need to offset the indices
+        int m_triangleOffset;
+        int m_materialOffset;
+        int m_nodeOffset;
+        int m_missValue = -1;
     };
 };

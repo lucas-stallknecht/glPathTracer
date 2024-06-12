@@ -71,6 +71,7 @@ layout (std430, binding = 4) readonly buffer materialsBuffer {
     Material[] materials;
 };
 
+uniform samplerCube skybox;
 // Render uniforms
 uniform int u_frame;
 uniform int u_bounces;
@@ -83,116 +84,6 @@ uniform mat4 invProjection;
 // Geometries uniform
 uniform int u_nSpheres;
 uniform int u_nTriangles;
-
-
-// ========= TEST BOX =========
-// Triangle[12] buildTestBox() {
-//    Material grayMat = Material(vec3(0.7, 0.7, 0.7), 0.0, 0.0, 0.9);
-//    Material redMat = Material(vec3(0.7, 0.1, 0.1), 0.0, 0.7, 0.5);
-//    Material greenMat = Material(vec3(0.1, 0.7, 0.1), 0.0, 0.7, 0.5);
-//    Material lightMat = Material(vec3(1.0, 1.0, 1.0), 6.0, 0.7, 0.5);
-//
-//    Triangle triangles[12];
-//    vec3 normal = vec3(0.0, 1.0, 0.0); // Assuming a default normal for all vertices
-//
-//    // Floor
-//    triangles[0] = Triangle(
-//        Vertex(vec3(-1.0, -1.0, -1.0), normal),
-//        Vertex(vec3(1.0, -1.0, -1.0), normal),
-//        Vertex(vec3(1.0, -1.0, 1.0), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        grayMat);
-//    triangles[1] = Triangle(
-//        Vertex(vec3(-1.0, -1.0, -1.0), normal),
-//        Vertex(vec3(1.0, -1.0, 1.0), normal),
-//        Vertex(vec3(-1.0, -1.0, 1.0), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        grayMat
-//    );
-//
-//    // Ceiling
-//    triangles[2] = Triangle(
-//        Vertex(vec3(-1.0, 1.0, -1.0), normal),
-//        Vertex(vec3(1.0, 1.0, -1.0), normal),
-//        Vertex(vec3(1.0, 1.0, 1.0), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        grayMat
-//    );
-//    triangles[3] = Triangle(
-//        Vertex(vec3(-1.0, 1.0, -1.0), normal),
-//        Vertex(vec3(1.0, 1.0, 1.0), normal),
-//        Vertex(vec3(-1.0, 1.0, 1.0), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        grayMat
-//    );
-//
-//    // Back wall
-//    triangles[4] = Triangle(
-//        Vertex(vec3(-1.0, -1.0, 1.0), normal),
-//        Vertex(vec3(1.0, -1.0, 1.0), normal),
-//        Vertex(vec3(1.0, 1.0, 1.0), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        grayMat
-//    );
-//    triangles[5] = Triangle(
-//        Vertex(vec3(-1.0, -1.0, 1.0), normal),
-//        Vertex(vec3(1.0, 1.0, 1.0), normal),
-//        Vertex(vec3(-1.0, 1.0, 1.0), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        grayMat
-//    );
-//
-//    // Left wall (red)
-//    triangles[6] = Triangle(
-//        Vertex(vec3(-1.0, -1.0, -1.0), normal),
-//        Vertex(vec3(-1.0, -1.0, 1.0), normal),
-//        Vertex(vec3(-1.0, 1.0, 1.0), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        redMat
-//    );
-//    triangles[7] = Triangle(
-//        Vertex(vec3(-1.0, -1.0, -1.0), normal),
-//        Vertex(vec3(-1.0, 1.0, 1.0), normal),
-//        Vertex(vec3(-1.0, 1.0, -1.0), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        redMat
-//    );
-//
-//    // Right wall (green)
-//    triangles[8] = Triangle(
-//        Vertex(vec3(1.0, -1.0, -1.0), normal),
-//        Vertex(vec3(1.0, -1.0, 1.0), normal),
-//        Vertex(vec3(1.0, 1.0, 1.0), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        greenMat
-//    );
-//    triangles[9] = Triangle(
-//        Vertex(vec3(1.0, -1.0, -1.0), normal),
-//        Vertex(vec3(1.0, 1.0, 1.0), normal),
-//        Vertex(vec3(1.0, 1.0, -1.0), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        greenMat
-//    );
-//
-//    triangles[10] = Triangle(
-//        Vertex(vec3(-0.5, 0.99, -1.5), normal),
-//        Vertex(vec3(0.5, 0.99, -1.5), normal),
-//        Vertex(vec3(0.5, 0.99, 0.5), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        lightMat
-//    );
-//    triangles[11] = Triangle(
-//        Vertex(vec3(-0.5, 0.99, -1.5), normal),
-//        Vertex(vec3(0.5, 0.99, 0.5), normal),
-//        Vertex(vec3(-0.5, 0.99, 0.5), normal),
-//        vec3(9.9, 9.9, 9.9),
-//        lightMat
-//    );
-//
-//    return triangles;
-//}
-
-// ====================================
 
 
 // ========= RANDOM FUNCTIONS =========
@@ -291,6 +182,23 @@ bool rayAABBIntersect(Ray ray, vec3 bmin, vec3 bmax) {
     return tmax >= tmin && tmax > 0;
 }
 
+HitInfo rayPlaIntersect(Ray ray, in vec4 p )
+{
+    HitInfo hi;
+    hi.hit = false;
+    hi.isTriangle = false;
+
+    float denom = -(dot(ray.ro,p.xyz)+p.w)/dot(ray.rd,p.xyz);
+
+    if(denom > 0.0){
+        hi.pos = ray.ro + denom * ray.rd;
+        hi.dist = denom;
+        hi.normal = p.xyz;
+        hi.hit = true;
+    }
+    return hi;
+}
+
 vec3 calculateBarycentric(vec3 pos, vec3 a, vec3 b, vec3 c)
 {
     vec3 v0 = b - a; vec3 v1 = c - a; vec3 v2 = pos - a;
@@ -313,7 +221,6 @@ HitInfo intersects(Ray ray) {
     HitInfo hi;
     hi.hit = false;
 
-    // Triangle cornell[12] = buildTestBox();
 
     for (int i = 0; i < u_nSpheres; i++) {
         HitInfo sphereHi = raySphereIntersect(ray, spheres[i]);
@@ -321,12 +228,12 @@ HitInfo intersects(Ray ray) {
             hi = sphereHi;
         }
     }
-//    for (int i = 0; i < 12; i++) {
-//        HitInfo triangleHi = rayTriangleIntersect(ray, cornell[i]);
-//        if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
-//            hi = triangleHi;
-//        }
-//    }
+
+    HitInfo planeHi = rayPlaIntersect(ray, vec4(0.0, 1.0, 0.0, 0.0));
+    if(planeHi.hit && (!hi.hit || planeHi.dist < hi.dist)) {
+        planeHi.material = Material(vec3(1.0), 0.0, 0.5, 0.25);
+        hi = planeHi;
+    }
 
 
     uint currentNodeIndex = 0;
@@ -362,6 +269,7 @@ vec3 trace(Ray ray, inout uint seed) {
     for (int i = 0; i < u_bounces; i++) {
         HitInfo hi = intersects(ray);
         if (!hi.hit) {
+            pixelColor += texture(skybox, ray.rd).rgb * 3.14 * clamp(i, 1, 1);
             break;
         }
         // we assumed that emissiveCol is the same as diffuseCol for the emissive objects (1 less mat component to share)
@@ -370,6 +278,7 @@ vec3 trace(Ray ray, inout uint seed) {
         pixelColor += (hi.material.diffuseCol * hi.material.emissiveStrength) * rayCol;
         rayCol *= hi.material.diffuseCol;
 
+        // smooth shading
         if(hi.isTriangle){
             vec3 bar = calculateBarycentric(hi.pos, hi.tri.v0.position, hi.tri.v1.position, hi.tri.v2.position);
             hi.normal = bar.x * hi.tri.v0.normal + bar.y * hi.tri.v1.normal + bar.z * hi.tri.v2.normal;
