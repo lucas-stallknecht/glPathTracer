@@ -41,8 +41,6 @@ struct Node {
     uint rightChild;
     uint firstPrim;
     uint primCount;
-    int hitLink;
-    int missLink;
 }; // 48 bytes
 
 struct HitInfo {
@@ -238,14 +236,17 @@ HitInfo intersects(Ray ray) {
 //    }
 
 
-    // BVH
-    uint currentNodeIndex = 0;
-    while (currentNodeIndex != -1) {
-        Node node = nodes[currentNodeIndex];
-        if (rayAABBIntersect(ray, node.aabbMin, node.aabbMax) < hi.dist) {
+    // BVH : 12/06 discovered the stack method instead of the hit link and miss method
+    // for now it's not better but I can do more
+    Node stack[10];
+    int currStackIndex = 0;
+    stack[currStackIndex++] = nodes[0];
+
+    while (currStackIndex > 0) {
+        Node node = stack[--currStackIndex];
 
             if (node.primCount > 0) {
-                for (uint i = nodes[currentNodeIndex].firstPrim; i < nodes[currentNodeIndex].firstPrim + nodes[currentNodeIndex].primCount; i++) {
+                for (uint i = node.firstPrim; i < node.firstPrim + node.primCount; i++) {
                     HitInfo triangleHi = rayTriangleIntersect(ray, triangles[i]);
                     if (triangleHi.hit && (!hi.hit || triangleHi.dist < hi.dist)) {
                         hi = triangleHi;
@@ -254,11 +255,20 @@ HitInfo intersects(Ray ray) {
                     }
                 }
             }
-            currentNodeIndex = node.hitLink;
+            else {
+                Node left = nodes[node.leftChild];
+                Node right = nodes[node.rightChild];
+                float distLeft = rayAABBIntersect(ray, left.aabbMin, left.aabbMax);
+                float distRight = rayAABBIntersect(ray, right.aabbMin, right.aabbMax);
 
-        } else {
-            currentNodeIndex = node.missLink;
-        }
+                bool isLeftNearest = distLeft < distRight;
+                float distNear = isLeftNearest ? distLeft : distRight;
+                float distFar = isLeftNearest ? distRight : distLeft;
+
+                if(distFar < hi.dist) stack[currStackIndex++] = isLeftNearest ? right : left;
+                if(distNear < hi.dist) stack[currStackIndex++] = isLeftNearest ? left : right;
+            }
+
     }
 
 

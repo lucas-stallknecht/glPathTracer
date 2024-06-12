@@ -10,13 +10,11 @@
 
 namespace rt {
 
-    GeometryManager::GeometryManager(const std::string &objPath, int depth, int matOffset, int triOffset, int nodeOffset, bool lastInChain, bool log)
-    : m_nodes(std::pow(2, depth + 1) - 1), m_maxDepth(depth), m_parents(std::pow(2, depth + 1) - 1)
-    ,m_materialOffset(matOffset) ,m_triangleOffset(triOffset), m_nodeOffset(nodeOffset) {
+    GeometryManager::GeometryManager(const std::string &objPath, int depth, int matOffset, int triOffset, bool log)
+    : m_nodes(std::pow(2, depth + 1) - 1), m_maxDepth(depth)
+    ,m_materialOffset(matOffset) ,m_triangleOffset(triOffset) {
         loadTrianglesFromFile(objPath, log);
 
-        if(!lastInChain)
-            m_missValue = std::pow(2, depth + 1) - 1;
 
         buildBVH(log);
     }
@@ -166,11 +164,9 @@ namespace rt {
         root.leftChild = root.rightChild = 0;
         root.firstPrim = m_triangleOffset + 0;
         root.primCount = m_triangles.size();
-        m_parents[0] = -1;
 
         updateNodeBounds(0);
         subdivide(0, 0);
-        buildLinks(0);
     }
 
     void GeometryManager::updateNodeBounds(unsigned int nodeIndex){
@@ -192,6 +188,7 @@ namespace rt {
 
     void GeometryManager::subdivide(unsigned int nodeIndex, int currentDepth) {
         Node& node = m_nodes[nodeIndex];
+
         glm::vec3 extent = node.aabbMax - node.aabbMin;
         // select the axis of the split plane
         int axis = 0;
@@ -211,8 +208,9 @@ namespace rt {
                 std::swap(m_triangles[i - m_triangleOffset], m_triangles[j-- - m_triangleOffset]);
         }
         unsigned int leftCount = i - node.firstPrim;
+        unsigned int rightCount = node.primCount - leftCount;
 
-        if(currentDepth < m_maxDepth){
+        if(currentDepth < m_maxDepth && leftCount > 1 && rightCount > 1){
             int leftChildIdx = m_nodesUsed++;
             int rightChildIdx = m_nodesUsed++;
             node.leftChild = leftChildIdx;
@@ -220,11 +218,9 @@ namespace rt {
 
             m_nodes[leftChildIdx].firstPrim = node.firstPrim;
             m_nodes[leftChildIdx].primCount = leftCount;
-            m_parents[leftChildIdx] = (int)nodeIndex;
 
             m_nodes[rightChildIdx].firstPrim = i;
-            m_nodes[rightChildIdx].primCount = node.primCount - leftCount;
-            m_parents[rightChildIdx] = (int)nodeIndex;
+            m_nodes[rightChildIdx].primCount = rightCount;
 
             // the node is not a leaf anymore
             node.primCount = 0;
@@ -239,46 +235,12 @@ namespace rt {
         }
     }
 
-    int GeometryManager::getRightChild(unsigned int parentIndex, unsigned int requestorIndex) {
-        Node& parentNode = m_nodes[parentIndex];
 
-        // requestor not a left child
-        if(requestorIndex > parentNode.leftChild){
-            // root of the tree
-            if(m_parents[parentIndex] < 0)
-                return m_missValue - m_nodeOffset;
-            return getRightChild(m_parents[parentIndex], parentIndex);
-        }
-
-        // returns sibling of the left child
-        return (int)parentNode.rightChild;
-    }
-
-    void GeometryManager::buildLinks(unsigned int nodeIndex) {
-        Node& node = m_nodes[nodeIndex];
-
-        // --- Hit Links
-        // if not the root, closest right sibling
-        node.hitLink = m_parents[nodeIndex] < 0 ? m_missValue : getRightChild(m_parents[nodeIndex], nodeIndex) + m_nodeOffset;
-
-        // --- Miss Links
-        // if not the root, closest right sibling
-        node.missLink = m_parents[nodeIndex] < 0 ? m_missValue : getRightChild(m_parents[nodeIndex], nodeIndex) + m_nodeOffset;
-
-        // if not a leaf
-        if(node.primCount == 0){
-            node.hitLink = (int)node.leftChild + m_nodeOffset;
-            buildLinks(node.leftChild);
-            buildLinks(node.rightChild);
-        }
-
-    }
 
     void GeometryManager::traverseBVH(unsigned int index) {
         Node& node = m_nodes[index];
-        std::cout << "Index : " << index + m_nodeOffset << " FirstPrim : " << node.firstPrim << " PrimCount : " << node.primCount
-        << " Left child : " << node.leftChild << " Right child : " << node.rightChild
-        << " Hit_Link : " << node.hitLink << " Miss_Link : " << node.missLink << std::endl;
+        std::cout << "Index : " << index << " FirstPrim : " << node.firstPrim << " PrimCount : " << node.primCount
+        << " Left child : " << node.leftChild << " Right child : " << node.rightChild << std::endl;
 
         if(node.primCount == 0){
             traverseBVH(node.leftChild);

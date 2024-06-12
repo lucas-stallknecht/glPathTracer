@@ -34,16 +34,20 @@ namespace rt {
         GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
 
 
-        GeometryManager helmet("../resources/helmet.obj", 11, 0, 0, 0, true, false);
+        GeometryManager helmet("../resources/helmet.obj", 16, 0, 0, true);
         std::vector<Triangle> triangles = helmet.m_triangles;
         std::vector<Material> materials = helmet.m_materials;
         std::vector<Node> nodes = helmet.m_nodes;
+//        helmet.traverseBVH(0);
 
-//        // ====== MONKEY ========
-//        GeometryManager testScene("../resources/test_scene.obj", 1, 0, 0, 0, false, false);
-//        // testScene.traverseBVH(0);
-//
 //        // ====== TEST SCENE ========
+//        GeometryManager testScene("../resources/test_scene.obj", 1, 0, 0, false);
+//        std::vector<Triangle> triangles = testScene.m_triangles;
+//        std::vector<Material> materials = testScene.m_materials;
+//        std::vector<Node> nodes = testScene.m_nodes;
+//        testScene.traverseBVH(0);
+//
+//        // ====== MONKEY ========
 //        GeometryManager monkey("../resources/suzanne_2.obj", 8, testScene.m_materials.size(),
 //                               testScene.m_triangles.size(), testScene.m_nodes.size(),
 //                               true, false);
