@@ -166,7 +166,7 @@ HitInfo rayTriangleIntersect(Ray ray, Triangle tri) {
     return hi;
 }
 
-bool rayAABBIntersect(Ray ray, vec3 bmin, vec3 bmax) {
+float rayAABBIntersect(Ray ray, vec3 bmin, vec3 bmax) {
     float tx1 = (bmin.x - ray.ro.x) / ray.rd.x;
     float tx2 = (bmax.x - ray.ro.x) / ray.rd.x;
     float tmin = min(tx1, tx2);
@@ -179,7 +179,8 @@ bool rayAABBIntersect(Ray ray, vec3 bmin, vec3 bmax) {
     float tz2 = (bmax.z - ray.ro.z) / ray.rd.z;
     tmin = max(tmin, min(tz1, tz2));
     tmax = min(tmax, max(tz1, tz2));
-    return tmax >= tmin && tmax > 0;
+    bool hit = tmax >= tmin && tmax > 0;
+    return hit ? tmin : 1e10;
 }
 
 HitInfo rayPlaIntersect(Ray ray, in vec4 p )
@@ -219,6 +220,7 @@ vec3 calculateBarycentric(vec3 pos, vec3 a, vec3 b, vec3 c)
 
 HitInfo intersects(Ray ray) {
     HitInfo hi;
+    hi.dist = 1e10;
     hi.hit = false;
 
 
@@ -229,17 +231,18 @@ HitInfo intersects(Ray ray) {
         }
     }
 
-    HitInfo planeHi = rayPlaIntersect(ray, vec4(0.0, 1.0, 0.0, 0.0));
-    if(planeHi.hit && (!hi.hit || planeHi.dist < hi.dist)) {
-        planeHi.material = Material(vec3(1.0), 0.0, 0.5, 0.25);
-        hi = planeHi;
-    }
+//    HitInfo planeHi = rayPlaIntersect(ray, vec4(0.0, 1.0, 0.0, 0.0));
+//    if(planeHi.hit && (!hi.hit || planeHi.dist < hi.dist)) {
+//        planeHi.material = Material(vec3(1.0), 0.0, 0.5, 0.25);
+//        hi = planeHi;
+//    }
 
 
+    // BVH
     uint currentNodeIndex = 0;
     while (currentNodeIndex != -1) {
         Node node = nodes[currentNodeIndex];
-        if (rayAABBIntersect(ray, node.aabbMin, node.aabbMax)) {
+        if (rayAABBIntersect(ray, node.aabbMin, node.aabbMax) < hi.dist) {
 
             if (node.primCount > 0) {
                 for (uint i = nodes[currentNodeIndex].firstPrim; i < nodes[currentNodeIndex].firstPrim + nodes[currentNodeIndex].primCount; i++) {
