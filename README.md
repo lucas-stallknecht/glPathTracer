@@ -1,7 +1,6 @@
 # OpenGL PathTracer
 
-![img.png](img.png)
-
+![pt_drake.png](pt_drake.png)
 Achievements :
 - [x] Compute shaders
 - [x] Camera controls
@@ -12,10 +11,8 @@ Achievements :
 - [x] Smooth shading
 - [X] HDRI Cubemap
 - [ ] Scenes presets / import with ImGUI
-- [ ] ?? Denoising algorithm ??
 
 Remaining fixes : 
 - Loop over a list of filepath and construct buffers automatically
 - Stop cutting every Bounding Volume in half, uniformly distribute the triangles instead
 - Possibility to disable smooth shading
-- Fix jitter and multiple rays per pixel

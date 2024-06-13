@@ -11,33 +11,34 @@
 namespace rt {
 
     GeometryManager::GeometryManager(const std::string &objPath, int depth, int matOffset, int triOffset, bool log)
-    : m_nodes(std::pow(2, depth + 1) - 1), m_maxDepth(depth)
+    : m_maxDepth(depth)
     ,m_materialOffset(matOffset) ,m_triangleOffset(triOffset) {
         loadTrianglesFromFile(objPath, log);
 
-
         buildBVH(log);
+
+        if (log) {
+            std::cout << "Number of nodes : " << m_nodes.size() << std::endl;
+            std::cout << "Size of node struct: " << sizeof(Node) << std::endl;
+            std::cout << "Size of nodes vector: " << m_nodes.size() * sizeof(Node) << std::endl;
+        }
     }
 
     std::vector<Sphere> GeometryManager::loadRTSpheres(bool log) {
         std::vector<Sphere> spheres;
 
-        spheres.push_back(Sphere{
-                {-0.75f, 0.0f, 0.0f}, 0.2f,
-                {{0.77f, 0.55f, 1.0f}, 0.0f, 0.0f, 1.0f, {0.0f, 0.0f}}
-        });
-        spheres.push_back(Sphere{
-                {-0.25f, 0.0f, 0.0f}, 0.2f,
-                {{0.77f, 0.55f, 1.0f}, 0.0f, 0.0f, 0.75f, {0.0f, 0.0f}}
-        });
-        spheres.push_back(Sphere{
-                {0.25f, 0.0f, 0.0f}, 0.2f,
-                {{0.77f, 0.55f, 1.0f}, 0.0f, 0.0f, 0.5f, {0.0f, 0.0f}}
-        });
-        spheres.push_back(Sphere{
-                {0.75f, 0.0f, 0.0f}, 0.2f,
-                {{0.77f, 0.55f, 1.0f}, 0.0f, 0.0f, 0.25f, {0.0f, 0.0f}}
-        });
+//        spheres.push_back(Sphere{
+//                {0.25f, 0.55f, 0.0f}, 0.05f,
+//                {{0.99f, 0.99f, 0.99f}, 0.0f, 0.25f, 1.0f, {0.0f, 0.0f}}
+//        });
+//        spheres.push_back(Sphere{
+//                {-0.25f, 0.25f, -0.25f}, 0.05f,
+//                {{0.99f, 0.99f, 0.99f}, 0.0f, 0.0f, 0.25f, {0.0f, 0.0f}}
+//        });
+//        spheres.push_back(Sphere{
+//                {-0.25f, 0.88f, 0.25f}, 0.05f,
+//                {{0.99f, 0.99f, 0.99f}, 0.0f, 0.0f, 1.0f, {0.0f, 0.0f}}
+//        });
 
         if (log) {
             std::cout << "Size of material struct : " << sizeof(Material) << std::endl;
@@ -113,7 +114,6 @@ namespace rt {
                 }
 
                 triangle.matIndex = m_materialOffset + shapes[s].mesh.material_ids[f];
-
                 // Add the triangle to the vector
                 triangles.push_back(triangle);
 
@@ -149,21 +149,17 @@ namespace rt {
 
     void GeometryManager::buildBVH(bool log){
 
-        if (log) {
-            std::cout << "Number of nodes : " << m_nodes.size() << std::endl;
-            std::cout << "Size of node struct: " << sizeof(Node) << std::endl;
-            std::cout << "Size of nodes vector: " << m_nodes.size() * sizeof(Node) << std::endl;
-        }
 
         // Initialize the root node and start recursions
         for(auto& tri : m_triangles){
             tri.centroid = (tri.v0.position + tri.v1.position + tri.v2.position) * 0.333f;
         }
 
-        Node& root = m_nodes[0];
+        Node root;
         root.leftChild = root.rightChild = 0;
         root.firstPrim = m_triangleOffset + 0;
         root.primCount = m_triangles.size();
+        m_nodes.push_back(root);
 
         updateNodeBounds(0);
         subdivide(0, 0);
@@ -216,14 +212,18 @@ namespace rt {
             node.leftChild = leftChildIdx;
             node.rightChild = rightChildIdx;
 
-            m_nodes[leftChildIdx].firstPrim = node.firstPrim;
-            m_nodes[leftChildIdx].primCount = leftCount;
-
-            m_nodes[rightChildIdx].firstPrim = i;
-            m_nodes[rightChildIdx].primCount = rightCount;
+            Node leftChild;
+            Node rightChild;
+            leftChild.firstPrim = node.firstPrim;
+            leftChild.primCount = leftCount;
+            rightChild.firstPrim = i;
+            rightChild.primCount = rightCount;
+            m_nodes.push_back(leftChild);
+            m_nodes.push_back(rightChild);
 
             // the node is not a leaf anymore
-            node.primCount = 0;
+            // we avoid dangling pointer
+            m_nodes[nodeIndex].primCount = 0;
 
             // recalculate the bounding box for each child
             updateNodeBounds(leftChildIdx);

@@ -21,7 +21,7 @@ namespace rt {
 
 
         // Window initialization
-        m_window = glfwCreateWindow(LAYOUT_WIDTH , HEIGHT, "Custom Path Tracing engine", nullptr, nullptr);
+        m_window = glfwCreateWindow(LAYOUT_WIDTH, HEIGHT, "Custom Path Tracing engine", nullptr, nullptr);
         if (m_window == nullptr) {
             std::cout << "Failed to create GLFW window" << std::endl;
             glfwTerminate();
@@ -39,7 +39,7 @@ namespace rt {
         };
         auto mouseCallback = [](GLFWwindow *window, double xpos, double ypos) {
             App *app = static_cast<App *>(glfwGetWindowUserPointer(window));
-            app->mouseCallback(window, (float)xpos,(float)ypos);
+            app->mouseCallback(window, (float) xpos, (float) ypos);
         };
         auto mouseButtonCallback = [](GLFWwindow *window, int button, int action, int mods) {
             App *app = static_cast<App *>(glfwGetWindowUserPointer(window));
@@ -57,7 +57,8 @@ namespace rt {
         ImGui::StyleColorsDark();
 
         // Setup Platform/Renderer backends
-        ImGui_ImplGlfw_InitForOpenGL(m_window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+        ImGui_ImplGlfw_InitForOpenGL(m_window,
+                                     true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
         ImGui_ImplOpenGL3_Init();
     };
 
@@ -78,10 +79,10 @@ namespace rt {
                 bool change = false;
                 change |= ImGui::InputInt("Bounces", &renderOptions.bounces, 1, 2);
                 change |= ImGui::InputInt("Samples", &renderOptions.samples);
-                change |= ImGui::SliderFloat("Jitter", &renderOptions.jitter, 0.0, 0.003);
+                change |= ImGui::SliderInt("Jitter", &renderOptions.jitter, 1, 10);
                 ImGui::End();
 
-                if(change){
+                if (change) {
                     m_renderer->resetAccumulation();
                     m_renderer->renderOptions = renderOptions;
                 }
@@ -99,20 +100,17 @@ namespace rt {
     };
 
     void App::keyCallback(GLFWwindow *window, int key) {
-        {
-            m_keysArePressed[key] = (glfwGetKey(window, key) == GLFW_PRESS);
-        }
+        m_keysArePressed[key] = (glfwGetKey(window, key) == GLFW_PRESS);
     }
 
     void App::mouseCallback(GLFWwindow *window, float xpos, float ypos) {
 
         // is right-clicked basically
-        if(!m_focused)
+        if (!m_focused)
             return;
 
         // the mouse was not focused the frame before
-        if (m_firstMouse)
-        {
+        if (m_firstMouse) {
             m_lastMousePosition.x = xpos;
             m_lastMousePosition.y = ypos;
             m_firstMouse = false;
@@ -120,7 +118,7 @@ namespace rt {
         float xOffset = xpos - m_lastMousePosition.x;
         float yOffset = m_lastMousePosition.y - ypos;
 
-        if(abs(xOffset) > 0.0 || abs(yOffset) > 0.0)
+        if (abs(xOffset) > 0.0 || abs(yOffset) > 0.0)
             m_renderer->resetAccumulation();
         m_lastMousePosition.x = xpos;
         m_lastMousePosition.y = ypos;
@@ -128,12 +126,12 @@ namespace rt {
         m_cam.updateCamDirection(xOffset, yOffset, m_io->DeltaTime);
     }
 
-    void App::mouseButtonCallback(GLFWwindow *window,  int button, int action) {
-        if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS){
+    void App::mouseButtonCallback(GLFWwindow *window, int button, int action) {
+        if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
             m_focused = true;
             glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
-        if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE){
+        if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
             m_focused = false;
             m_firstMouse = true;
             glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -156,6 +154,14 @@ namespace rt {
         }
         if (m_keysArePressed['D'] && m_focused) {
             m_cam.moveRight(m_io->DeltaTime);
+            m_renderer->resetAccumulation();
+        }
+        if (m_keysArePressed['Q'] && m_focused) {
+            m_cam.moveDown(m_io->DeltaTime);
+            m_renderer->resetAccumulation();
+        }
+        if (m_keysArePressed[' '] && m_focused) {
+            m_cam.moveUp(m_io->DeltaTime);
             m_renderer->resetAccumulation();
         }
     }

@@ -31,6 +31,16 @@ namespace rt {
         m_camPos += glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f)) * CAM_MOV_SPEED * deltaTime;
     }
 
+    void Camera::moveUp(float deltaTime) {
+        glm::vec3 right = glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f));
+        m_camPos -= glm::cross(m_camDir, right) * CAM_MOV_SPEED * deltaTime * 0.25f;
+    }
+
+    void Camera::moveDown(float deltaTime) {
+        glm::vec3 right = glm::cross(m_camDir, glm::vec3(0.0f, 1.0f, 0.0f));
+        m_camPos += glm::cross(m_camDir, right) * CAM_MOV_SPEED * deltaTime * 0.25f;
+    }
+
     void Camera::updateCamDirection(float deltax, float deltay, float deltaTime){
         // pitch and yaw delta already depends on framerate so we don't multiply it by deltaTime
         float pitchDelta = deltay * CAM_VIEW_SPEED;

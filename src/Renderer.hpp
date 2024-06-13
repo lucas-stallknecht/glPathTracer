@@ -18,7 +18,7 @@ namespace rt {
     struct RenderOptions {
         int bounces = 4;
         int samples = 1;
-        float jitter = 0.0;
+        int jitter = 1;
     };
 
     class Renderer {

@@ -30,11 +30,10 @@ namespace rt {
 
         // Scene objects
         std::vector<Sphere> spheres = GeometryManager::loadRTSpheres(false);
-        spheres = std::vector<Sphere>(0);
         GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
 
 
-        GeometryManager helmet("../resources/helmet.obj", 16, 0, 0, true);
+        GeometryManager helmet("../resources/dragon.obj", 23, 0, 0, true);
         std::vector<Triangle> triangles = helmet.m_triangles;
         std::vector<Material> materials = helmet.m_materials;
         std::vector<Node> nodes = helmet.m_nodes;
@@ -218,7 +217,7 @@ namespace rt {
         m_compShader->setUniform1i("u_frame", m_frame);
         m_compShader->setUniform1i("u_bounces", renderOptions.bounces);
         m_compShader->setUniform1i("u_samples", renderOptions.samples);
-        m_compShader->setUniform1f("u_jitter", renderOptions.jitter);
+        m_compShader->setUniform1i("u_jitter", renderOptions.jitter);
         glDispatchCompute((unsigned int)VP_WIDTH/8, (unsigned int)VP_HEIGHT/8, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
