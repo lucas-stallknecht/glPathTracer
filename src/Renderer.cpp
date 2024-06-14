@@ -30,6 +30,7 @@ namespace rt {
 
         // Scene objects
         std::vector<Sphere> spheres = GeometryManager::loadRTSpheres(false);
+        spheres = std::vector<Sphere>(0);
         GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
 
 
@@ -218,6 +219,8 @@ namespace rt {
         m_compShader->setUniform1i("u_bounces", renderOptions.bounces);
         m_compShader->setUniform1i("u_samples", renderOptions.samples);
         m_compShader->setUniform1i("u_jitter", renderOptions.jitter);
+        m_compShader->setUniform1i("u_showSkybox", (int)renderOptions.skybox);
+        m_compShader->setUniform1i("u_smoothShading", renderOptions.smoothShading);
         glDispatchCompute((unsigned int)VP_WIDTH/8, (unsigned int)VP_HEIGHT/8, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 

@@ -14,5 +14,4 @@ Achievements :
 
 Remaining fixes : 
 - Loop over a list of filepath and construct buffers automatically
-- Stop cutting every Bounding Volume in half, uniformly distribute the triangles instead
-- Possibility to disable smooth shading
+- ~~Stop cutting every Bounding Volume in half, uniformly distribute the triangles instead~~

@@ -11,8 +11,7 @@
 namespace rt {
 
     GeometryManager::GeometryManager(const std::string &objPath, int depth, int matOffset, int triOffset, bool log)
-    : m_maxDepth(depth)
-    ,m_materialOffset(matOffset) ,m_triangleOffset(triOffset) {
+            : m_maxDepth(depth), m_materialOffset(matOffset), m_triangleOffset(triOffset) {
         loadTrianglesFromFile(objPath, log);
 
         buildBVH(log);
@@ -27,18 +26,18 @@ namespace rt {
     std::vector<Sphere> GeometryManager::loadRTSpheres(bool log) {
         std::vector<Sphere> spheres;
 
-//        spheres.push_back(Sphere{
-//                {0.25f, 0.55f, 0.0f}, 0.05f,
-//                {{0.99f, 0.99f, 0.99f}, 0.0f, 0.25f, 1.0f, {0.0f, 0.0f}}
-//        });
-//        spheres.push_back(Sphere{
-//                {-0.25f, 0.25f, -0.25f}, 0.05f,
-//                {{0.99f, 0.99f, 0.99f}, 0.0f, 0.0f, 0.25f, {0.0f, 0.0f}}
-//        });
-//        spheres.push_back(Sphere{
-//                {-0.25f, 0.88f, 0.25f}, 0.05f,
-//                {{0.99f, 0.99f, 0.99f}, 0.0f, 0.0f, 1.0f, {0.0f, 0.0f}}
-//        });
+        spheres.push_back(Sphere{
+                {0.25f, 0.55f, 0.0f}, 0.05f,
+                {{0.99f, 0.99f, 0.99f}, 0.0f, 0.25f, 1.0f, {0.0f, 0.0f}}
+        });
+        spheres.push_back(Sphere{
+                {-0.25f, 0.25f, -0.25f}, 0.05f,
+                {{0.99f, 0.99f, 0.99f}, 0.0f, 0.0f, 0.25f, {0.0f, 0.0f}}
+        });
+        spheres.push_back(Sphere{
+                {-0.25f, 0.88f, 0.25f}, 0.05f,
+                {{0.99f, 0.99f, 0.99f}, 0.0f, 0.0f, 1.0f, {0.0f, 0.0f}}
+        });
 
         if (log) {
             std::cout << "Size of material struct : " << sizeof(Material) << std::endl;
@@ -96,11 +95,10 @@ namespace rt {
                     }
 
 
-
                     if (idx.normal_index >= 0) {
-                        tinyobj::real_t nx = attrib.normals[3*size_t(idx.normal_index)+0];
-                        tinyobj::real_t ny = attrib.normals[3*size_t(idx.normal_index)+1];
-                        tinyobj::real_t nz = attrib.normals[3*size_t(idx.normal_index)+2];
+                        tinyobj::real_t nx = attrib.normals[3 * size_t(idx.normal_index) + 0];
+                        tinyobj::real_t ny = attrib.normals[3 * size_t(idx.normal_index) + 1];
+                        tinyobj::real_t nz = attrib.normals[3 * size_t(idx.normal_index) + 2];
 
                         if (v == 0) {
                             triangle.v0.normal = {nx, ny, nz};
@@ -121,14 +119,14 @@ namespace rt {
             }
         }
 
-        for (const auto &mat: mats){
+        for (const auto &mat: mats) {
             // loop over materials
             Material m{
                     glm::vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]),
                     mat.emission[0],
                     mat.roughness,
                     mat.metallic,
-                    glm::vec2(8.8,8.8)
+                    glm::vec2(8.8, 8.8)
             };
             materials.push_back(m);
         }
@@ -147,11 +145,9 @@ namespace rt {
         m_materials = materials;
     }
 
-    void GeometryManager::buildBVH(bool log){
-
-
+    void GeometryManager::buildBVH(bool log) {
         // Initialize the root node and start recursions
-        for(auto& tri : m_triangles){
+        for (auto &tri: m_triangles) {
             tri.centroid = (tri.v0.position + tri.v1.position + tri.v2.position) * 0.333f;
         }
 
@@ -165,33 +161,41 @@ namespace rt {
         subdivide(0, 0);
     }
 
-    void GeometryManager::updateNodeBounds(unsigned int nodeIndex){
-        Node& node = m_nodes[nodeIndex];
-        node.aabbMin = glm::vec3( 1e30f );
-        node.aabbMax = glm::vec3( -1e30f );
+    void GeometryManager::updateNodeBounds(unsigned int nodeIndex) {
+        Node &node = m_nodes[nodeIndex];
+        node.aabbMin = glm::vec3(1e30f);
+        node.aabbMax = glm::vec3(-1e30f);
         // checks all the triangles contained in a bounding box and adjusts the min and max pos
-        for (unsigned int first = node.firstPrim, i = 0; i < node.primCount; i++)
-        {
-            Triangle& leafTri = m_triangles[first + i - m_triangleOffset];
-            node.aabbMin = glm::min( node.aabbMin, leafTri.v0.position );
-            node.aabbMin = glm::min( node.aabbMin, leafTri.v1.position );
-            node.aabbMin = glm::min( node.aabbMin, leafTri.v2.position );
-            node.aabbMax = glm::max( node.aabbMax, leafTri.v0.position );
-            node.aabbMax = glm::max( node.aabbMax, leafTri.v1.position );
-            node.aabbMax = glm::max( node.aabbMax, leafTri.v2.position );
+        for (unsigned int first = node.firstPrim, i = 0; i < node.primCount; i++) {
+            Triangle &leafTri = m_triangles[first + i - m_triangleOffset];
+            node.aabbMin = glm::min(node.aabbMin, leafTri.v0.position);
+            node.aabbMin = glm::min(node.aabbMin, leafTri.v1.position);
+            node.aabbMin = glm::min(node.aabbMin, leafTri.v2.position);
+            node.aabbMax = glm::max(node.aabbMax, leafTri.v0.position);
+            node.aabbMax = glm::max(node.aabbMax, leafTri.v1.position);
+            node.aabbMax = glm::max(node.aabbMax, leafTri.v2.position);
         }
     }
 
+    float GeometryManager::giveSplitPos(int axis, Node node){
+        float sum = 0;
+        for(int i = node.firstPrim; i < node.firstPrim + node.primCount; i++) {
+            sum += m_triangles[i].centroid[axis];
+        }
+        return sum/node.primCount;
+    }
+
     void GeometryManager::subdivide(unsigned int nodeIndex, int currentDepth) {
-        Node& node = m_nodes[nodeIndex];
+        Node &node = m_nodes[nodeIndex];
 
         glm::vec3 extent = node.aabbMax - node.aabbMin;
         // select the axis of the split plane
         int axis = 0;
         if (extent.y > extent.x) axis = 1;
         if (extent.z > extent[axis]) axis = 2;
-        // middle of the extent ==> TODO uniform distribution across all bounding boxes
-        float splitPos = node.aabbMin[axis] + extent[axis] * 0.5f;
+
+        // average position of the triangles in the bounding box ==> TODO heuristic
+        float splitPos = giveSplitPos(axis, node);
 
         // puts all the triangles with centroid before the splitPos on the left
         // i will help determine the triangles count for the leftChild
@@ -206,7 +210,7 @@ namespace rt {
         unsigned int leftCount = i - node.firstPrim;
         unsigned int rightCount = node.primCount - leftCount;
 
-        if(currentDepth < m_maxDepth && leftCount > 1 && rightCount > 1){
+        if (currentDepth < m_maxDepth && leftCount > 1 && rightCount > 1) {
             int leftChildIdx = m_nodesUsed++;
             int rightChildIdx = m_nodesUsed++;
             node.leftChild = leftChildIdx;
@@ -236,13 +240,12 @@ namespace rt {
     }
 
 
-
     void GeometryManager::traverseBVH(unsigned int index) {
-        Node& node = m_nodes[index];
+        Node &node = m_nodes[index];
         std::cout << "Index : " << index << " FirstPrim : " << node.firstPrim << " PrimCount : " << node.primCount
-        << " Left child : " << node.leftChild << " Right child : " << node.rightChild << std::endl;
+                  << " Left child : " << node.leftChild << " Right child : " << node.rightChild << std::endl;
 
-        if(node.primCount == 0){
+        if (node.primCount == 0) {
             traverseBVH(node.leftChild);
             traverseBVH(node.rightChild);
         }

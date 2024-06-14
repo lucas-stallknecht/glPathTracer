@@ -80,6 +80,8 @@ namespace rt {
                 change |= ImGui::InputInt("Bounces", &renderOptions.bounces, 1, 2);
                 change |= ImGui::InputInt("Samples", &renderOptions.samples);
                 change |= ImGui::SliderInt("Jitter", &renderOptions.jitter, 1, 10);
+                change |= ImGui::Checkbox("Show skybox background", &renderOptions.skybox);
+                change |= ImGui::Checkbox("Smooth shading", &renderOptions.smoothShading);
                 ImGui::End();
 
                 if (change) {

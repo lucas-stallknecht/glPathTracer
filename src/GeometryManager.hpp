@@ -62,9 +62,9 @@ namespace rt {
 
     private:
         void loadTrianglesFromFile(const std::string& objPath, bool log=false);
-
         void updateNodeBounds(unsigned int nodeIndex);
         void subdivide(unsigned int nodeIndex, int currentDepth);
+        float giveSplitPos(int axis, Node node);
 
         int m_nodesUsed = 1;
         int m_maxDepth;

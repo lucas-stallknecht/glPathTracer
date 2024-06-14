@@ -71,6 +71,8 @@ layout (std430, binding = 4) readonly buffer materialsBuffer {
 };
 
 uniform samplerCube skybox;
+uniform int u_showSkybox;
+uniform bool u_smoothShading;
 // Render uniforms
 uniform int u_frame;
 uniform int u_bounces;
@@ -301,7 +303,7 @@ vec3 trace(Ray ray, inout uint seed) {
     for (int i = 0; i < u_bounces; i++) {
         HitInfo hi = intersects(ray);
         if (!hi.hit) {
-            pixelColor += texture(skybox, ray.rd).rgb * 3.14 * clamp(i, 0, 1) * rayCol;
+            pixelColor += texture(skybox, ray.rd).rgb * 3.14 * clamp(i, u_showSkybox, 1) * rayCol;
             break;
         }
         // we assumed that emissiveCol is the same as diffuseCol for the emissive objects (1 less mat component to share)
@@ -311,10 +313,10 @@ vec3 trace(Ray ray, inout uint seed) {
         rayCol *= hi.material.diffuseCol;
 
         // smooth shading
-//        if(hi.smoothShading){
-//            vec3 bar = calculateBarycentric(hi.pos, hi.tri.v0.position, hi.tri.v1.position, hi.tri.v2.position);
-//            hi.normal = bar.x * hi.tri.v0.normal + bar.y * hi.tri.v1.normal + bar.z * hi.tri.v2.normal;
-//        }
+        if(hi.smoothShading && u_smoothShading){
+            vec3 bar = calculateBarycentric(hi.pos, hi.tri.v0.position, hi.tri.v1.position, hi.tri.v2.position);
+            hi.normal = bar.x * hi.tri.v0.normal + bar.y * hi.tri.v1.normal + bar.z * hi.tri.v2.normal;
+        }
 
         Ray newRay;
         newRay.ro = hi.pos + hi.normal * 0.001;

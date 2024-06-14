@@ -19,6 +19,8 @@ namespace rt {
         int bounces = 4;
         int samples = 1;
         int jitter = 1;
+        bool smoothShading = false;
+        bool skybox = false;
     };
 
     class Renderer {
