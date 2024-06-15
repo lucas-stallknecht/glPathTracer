@@ -19,7 +19,6 @@ namespace rt {
         static constexpr int HEIGHT = 800;
 
     public:
-
         App();
         void run();
         ~App();

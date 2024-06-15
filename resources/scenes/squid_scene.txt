@@ -1,0 +1,2 @@
+m- ../resources/objects/squid.obj 25 1
+m- ../resources/objects/cornell.obj 1 0

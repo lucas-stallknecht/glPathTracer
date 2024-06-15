@@ -2340,7 +2340,7 @@ GLFWAPI void glfwInitAllocator(const GLFWallocator* allocator);
  *
  *  @param[in] loader The address of the function to use, or `NULL`.
  *
- *  @par GeometryManager function signature
+ *  @par Mesh function signature
  *  @code
  *  PFN_vkVoidFunction vkGetInstanceProcAddr(VkInstance instance, const char* name)
  *  @endcode

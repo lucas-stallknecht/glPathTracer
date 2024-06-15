@@ -8,7 +8,7 @@
     Profile: compatibility
     Extensions:
         
-    GeometryManager: True
+    Mesh: True
     Local files: False
     Omit khrplatform: False
     Reproducible: False

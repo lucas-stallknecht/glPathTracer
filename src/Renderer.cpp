@@ -7,7 +7,8 @@
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
-#include "GeometryManager.hpp"
+#include "Mesh.hpp"
+#include "Scene.hpp"
 
 namespace rt {
 
@@ -27,87 +28,23 @@ namespace rt {
         glBindVertexArray(m_vao);
         m_shader->use();
         initializeRenderQuad();
-
-        // Scene objects
-        std::vector<Sphere> spheres = GeometryManager::loadRTSpheres(false);
-        spheres = std::vector<Sphere>(0);
-        GLsizeiptr sphereVecSize = spheres.size() * sizeof(Sphere);
-
-
-        GeometryManager helmet("../resources/dragon.obj", 23, 0, 0, true);
-        std::vector<Triangle> triangles = helmet.m_triangles;
-        std::vector<Material> materials = helmet.m_materials;
-        std::vector<Node> nodes = helmet.m_nodes;
-//        helmet.traverseBVH(0);
-
-//        // ====== TEST SCENE ========
-//        GeometryManager testScene("../resources/test_scene.obj", 1, 0, 0, false);
-//        std::vector<Triangle> triangles = testScene.m_triangles;
-//        std::vector<Material> materials = testScene.m_materials;
-//        std::vector<Node> nodes = testScene.m_nodes;
-//        testScene.traverseBVH(0);
-//
-//        // ====== MONKEY ========
-//        GeometryManager monkey("../resources/suzanne_2.obj", 8, testScene.m_materials.size(),
-//                               testScene.m_triangles.size(), testScene.m_nodes.size(),
-//                               true, false);
-//        // monkey.traverseBVH(0);
-//
-//        // ====== MERGE ========
-//        std::vector<Triangle> triangles = testScene.m_triangles;
-//        triangles.insert(triangles.end(),
-//                         monkey.m_triangles.begin(),
-//                         monkey.m_triangles.end());
-//        std::vector<Node> nodes = testScene.m_nodes;
-//        nodes.insert(nodes.end(),
-//                     monkey.m_nodes.begin(),
-//                     monkey.m_nodes.end());
-//        std::vector<Material> materials = testScene.m_materials;
-//        materials.insert(materials.end(),
-//                         monkey.m_materials.begin(),
-//                         monkey.m_materials.end());
-
-        GLsizeiptr materialsVecSize = materials.size() * sizeof(Material);
-        GLsizeiptr trianglesVecSize = triangles.size() * sizeof(Triangle);
-        GLsizeiptr nodesVecSize = nodes.size() * sizeof(Node);
-
-
-        glGenBuffers(1, &m_ssbo);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize + nodesVecSize + materialsVecSize, nullptr, GL_STATIC_DRAW);
-        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, m_ssbo, 0 , sphereVecSize);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sphereVecSize, spheres.data());
-        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 2, m_ssbo, sphereVecSize , trianglesVecSize);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, sphereVecSize, trianglesVecSize, triangles.data());
-        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 3, m_ssbo, sphereVecSize + trianglesVecSize , nodesVecSize);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize, nodesVecSize, nodes.data());
-        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 4, m_ssbo, sphereVecSize + trianglesVecSize + nodesVecSize, materialsVecSize);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, sphereVecSize + trianglesVecSize + nodesVecSize, materialsVecSize, materials.data());
-
-        m_compShader->use();
-        m_compShader->setUniform1i("u_nSpheres", spheres.size());
-        m_compShader->setUniform1i("u_nTriangles", triangles.size());
-
-
-        // Skybox
-        std::vector<std::string> faces
-        {
-            "../resources/skybox_paris/px.png",    // right
-            "../resources/skybox_paris/nx.png",     // left
-            "../resources/skybox_paris/py.png",      // top
-            "../resources/skybox_paris/ny.png",   // bottom
-            "../resources/skybox_paris/pz.png",    // front
-            "../resources/skybox_paris/nz.png"      // back
-        };
-        GLuint cubemapTexture = loadCubemap(faces);
-
     }
 
-    GLuint Renderer::loadCubemap(std::vector<std::string> faces)
+    void Renderer::loadCubeMap(const std::string& skyboxDirectory)
     {
         GLuint textureID;
         glGenTextures(1, &textureID);
         glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+        std::vector<std::string> faces
+                {
+                        skyboxDirectory + "/px.png",    // right
+                        skyboxDirectory + "/nx.png",     // left
+                        skyboxDirectory + "/py.png",      // top
+                        skyboxDirectory + "/ny.png",   // bottom
+                        skyboxDirectory + "/pz.png",    // front
+                        skyboxDirectory + "/nz.png"      // back
+                };
 
         int width, height, nrChannels;
         for (unsigned int i = 0; i < faces.size(); i++)
@@ -131,8 +68,46 @@ namespace rt {
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    }
 
-        return textureID;
+    void Renderer::loadScene(const std::string& scenePath) {
+
+        Scene scene(scenePath);
+
+        std::vector<MeshInfo> meshFiles = scene.m_meshesInfo;
+        std::vector<Triangle> triangles;
+        std::vector<Node> nodes;
+        std::vector<Material> materials;
+        std::vector<glm::vec2> meshInfoList;
+        for(const auto &meshInfo: meshFiles) {
+            Mesh geo(meshInfo.objPath, meshInfo.depth, materials.size(), triangles.size(), false);
+            triangles.insert(triangles.end(),geo.m_triangles.begin(), geo.m_triangles.end());
+            materials.insert(materials.end(),geo.m_materials.begin(), geo.m_materials.end());
+            meshInfoList.emplace_back(nodes.size(), (int)meshInfo.smoothShading);
+            nodes.insert(nodes.end(),geo.m_nodes.begin(), geo.m_nodes.end());
+        }
+
+        GLsizeiptr materialsVecSize = materials.size() * sizeof(Material);
+        GLsizeiptr trianglesVecSize = triangles.size() * sizeof(Triangle);
+        GLsizeiptr nodesVecSize = nodes.size() * sizeof(Node);
+        GLsizeiptr totalSize = 0;
+
+        glGenBuffers(1, &m_ssbo);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, trianglesVecSize + nodesVecSize + materialsVecSize, nullptr, GL_STATIC_DRAW);
+
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, m_ssbo, totalSize , trianglesVecSize);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, totalSize, trianglesVecSize, triangles.data());
+        totalSize += trianglesVecSize;
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 2, m_ssbo, totalSize , nodesVecSize);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, totalSize, nodesVecSize, nodes.data());
+        totalSize += nodesVecSize;
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 3, m_ssbo, totalSize, materialsVecSize);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, totalSize, materialsVecSize, materials.data());
+
+        m_compShader->use();
+        m_compShader->setUniform1i("u_nMeshes", meshInfoList.size());
+        m_compShader->setUniform2fv("meshInfo", meshInfoList);
     }
 
     void Renderer::initializeRenderQuad() {
@@ -169,30 +144,6 @@ namespace rt {
         glBindImageTexture(0, m_rtTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
     }
 
-    void Renderer::logComputeShaderCapabilities(){
-        int work_grp_cnt[3];
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &work_grp_cnt[0]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &work_grp_cnt[1]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &work_grp_cnt[2]);
-        std::cout << "Max work groups per compute shader" <<
-                  " x:" << work_grp_cnt[0] <<
-                  " y:" << work_grp_cnt[1] <<
-                  " z:" << work_grp_cnt[2] << "\n";
-
-        int work_grp_size[3];
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_grp_size[0]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_grp_size[1]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_grp_size[2]);
-        std::cout << "Max work group sizes" <<
-                  " x:" << work_grp_size[0] <<
-                  " y:" << work_grp_size[1] <<
-                  " z:" << work_grp_size[2] << "\n";
-
-        int work_grp_inv;
-        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &work_grp_inv);
-        std::cout << "Max invocations count per work group: " << work_grp_inv << "\n";
-    };
-
     void Renderer::updateCamera(glm::vec3 camPos, glm::vec3 camDir, glm::mat4 invProjection){
         m_compShader->use();
 
@@ -219,8 +170,10 @@ namespace rt {
         m_compShader->setUniform1i("u_bounces", renderOptions.bounces);
         m_compShader->setUniform1i("u_samples", renderOptions.samples);
         m_compShader->setUniform1i("u_jitter", renderOptions.jitter);
-        m_compShader->setUniform1i("u_showSkybox", (int)renderOptions.skybox);
+        m_compShader->setUniform1i("u_enableSkybox", renderOptions.enableSkybox);
+        m_compShader->setUniform1i("u_showSkybox", renderOptions.showSkybox);
         m_compShader->setUniform1i("u_smoothShading", renderOptions.smoothShading);
+        m_compShader->setUniform1f("u_skyboxIntensity", renderOptions.skyboxIntensity);
         glDispatchCompute((unsigned int)VP_WIDTH/8, (unsigned int)VP_HEIGHT/8, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 

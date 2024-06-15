@@ -9,9 +9,9 @@ Achievements :
 - [x] OBJ imports
 - [x] Acceleration structures, BVH (Bounding Volume hierarchy for every object)
 - [x] Smooth shading
-- [X] HDRI Cubemap
-- [ ] Scenes presets / import with ImGUI
+- [X] CubeMap skybox
+- [x] Scenes preset import with ImGUI
 
-Remaining fixes : 
-- Loop over a list of filepath and construct buffers automatically
-- ~~Stop cutting every Bounding Volume in half, uniformly distribute the triangles instead~~
+
+To-do :
+- Optimise the cutting process : heuristic instead of average centroid position

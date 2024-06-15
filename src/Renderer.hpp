@@ -16,11 +16,13 @@
 namespace rt {
 
     struct RenderOptions {
-        int bounces = 4;
+        int bounces = 5;
         int samples = 1;
         int jitter = 1;
+        bool enableSkybox = true;
+        bool showSkybox = false;
         bool smoothShading = false;
-        bool skybox = false;
+        float skyboxIntensity = 2.5;
     };
 
     class Renderer {
@@ -30,13 +32,13 @@ namespace rt {
         void draw();
         void updateCamera(glm::vec3 camPos, glm::vec3 camDir, glm::mat4 invProjection);
         void resetAccumulation();
+        void loadCubeMap(const std::string& skyboxDirectory);
+        void loadScene(const std::string& scenePath);
 
         RenderOptions renderOptions;
 
     private:
         void initializeRenderQuad();
-        static void logComputeShaderCapabilities();
-        GLuint loadCubemap(std::vector<std::string> faces);
 
         const int VP_WIDTH, VP_HEIGHT;
         std::unique_ptr<Shader> m_shader;

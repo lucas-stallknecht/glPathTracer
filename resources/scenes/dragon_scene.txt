@@ -1,0 +1,1 @@
+m- ../resources/objects/dragon.obj 24 0

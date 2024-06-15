@@ -12,7 +12,7 @@ struct Material {
     vec3 diffuseCol; // 12
     float emissiveStrength; // 4
     float roughness; // 4
-    float specularPerc; // 4
+    float metallic; // 4
 }; // 32 bytes with the padding[2]
 
 struct Ray {
@@ -40,8 +40,8 @@ struct Node {
     uint leftChild;
     vec3 aabbMax;
     uint rightChild;
-    uint firstPrim;
-    uint primCount;
+    int firstPrim;
+    int primCount;
 }; // 48 bytes
 
 struct HitInfo {
@@ -50,29 +50,38 @@ struct HitInfo {
     vec3 pos;
     vec3 normal;
     Material material;
-    Triangle tri;
-    bool smoothShading;
+    int triIndex;
 };
 
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout (rgba32f, binding = 0) uniform image2D imgOutput;
 
-layout (std430, binding = 1) readonly buffer spheresBuffer {
-    Sphere[] spheres;
-};
-layout (std430, binding = 2) readonly buffer trianglesBuffer {
+layout (std430, binding = 1) readonly buffer trianglesBuffer {
     Triangle[] triangles;
 };
-layout (std430, binding = 3) readonly buffer nodesBuffer {
+layout (std430, binding = 2) readonly buffer nodesBuffer {
     Node[] nodes;
 };
-layout (std430, binding = 4) readonly buffer materialsBuffer {
+layout (std430, binding = 3) readonly buffer materialsBuffer {
     Material[] materials;
 };
 
+#define N_SPHERES 0
+Sphere spheres[3] = Sphere[3](
+    Sphere(vec3(0.25, 0.55, 0.0), 0.05,
+           Material(vec3(0.99, 0.99, 0.99), 0.0, 0.25, 1.0)),
+    Sphere(vec3(-0.25, 0.25, -0.25), 0.05,
+           Material(vec3(0.99, 0.99, 0.99), 0.0, 0.0, 0.25)),
+    Sphere(vec3(-0.25, 0.88, 0.25), 0.05,
+           Material(vec3(0.99, 0.99, 0.99), 0.0, 0.0, 1.0))
+);
+
+
 uniform samplerCube skybox;
 uniform int u_showSkybox;
+uniform int u_enableSkybox;
 uniform bool u_smoothShading;
+uniform float u_skyboxIntensity;
 // Render uniforms
 uniform int u_frame;
 uniform int u_bounces;
@@ -83,16 +92,8 @@ uniform vec3 camPos;
 uniform mat4 invView;
 uniform mat4 invProjection;
 // Geometries uniform
-uniform int u_nSpheres;
-uniform int u_nTriangles;
-
-
-// TEST MATS
-const Vertex v0 = Vertex(vec3(-1.0, 0.0, -1.0), vec3(0.0, 1.0, 0.0));
-const Vertex v1 = Vertex(vec3(1.0, 0.0, -1.0), vec3(0.0, 1.0, 0.0));
-const Vertex v2 = Vertex(vec3(-1.0, 0.0, 1.0), vec3(0.0, 1.0, 0.0));
-const Vertex v3 = Vertex(vec3(1.0, 0.0, 1.0), vec3(0.0, 1.0, 0.0));
-const Triangle groundTriangles[2] = {Triangle(v0, v1, v2, vec3(0.0), 0), Triangle(v1, v3, v2, vec3(0.0), 0)};
+uniform int u_nMeshes;
+uniform vec2 meshInfo[10];
 
 
 // ========= RANDOM FUNCTIONS =========
@@ -197,7 +198,6 @@ HitInfo rayPlaIntersect(Ray ray, in vec4 p )
 {
     HitInfo hi;
     hi.hit = false;
-    hi.smoothShading = false;
 
     float denom = -(dot(ray.ro,p.xyz)+p.w)/dot(ray.rd,p.xyz);
 
@@ -233,43 +233,38 @@ HitInfo intersects(Ray ray) {
     hi.dist = 1e10;
     hi.hit = false;
 
-
-    for (int i = 0; i < u_nSpheres; i++) {
+    for (int i = 0; i < N_SPHERES; i++) {
         HitInfo sphereHi = raySphereIntersect(ray, spheres[i]);
         if (sphereHi.hit && (sphereHi.dist < hi.dist)) {
             hi = sphereHi;
+            hi.triIndex = -1;
         }
     }
 
+    for (int m = 0; m < u_nMeshes; m++) {
+        // Extract the mesh offset from meshInfo
+        int meshOffset = int(meshInfo[m].x);
 
-//    HitInfo planeHi = rayPlaIntersect(ray, vec4(0.0, 1.0, 0.0, 0.0));
-//    if(planeHi.hit && (planeHi.dist < hi.dist)) {
-//        planeHi.material = Material(vec3(0.954242, 0.521638, 0.452692), 0.0, 0.5, 0.25);
-//        hi = planeHi;
-//    }
+        // BVH : 12/06 discovered the stack method instead of the hit link and miss method
+        uint stack[32];
+        int currStackIndex = 0;
+        stack[currStackIndex++] = 0;
 
-
-    // BVH : 12/06 discovered the stack method instead of the hit link and miss method
-    uint stack[32];
-    int currStackIndex = 0;
-    stack[currStackIndex++] = 0;
-
-    while (currStackIndex > 0) {
-        Node node = nodes[stack[--currStackIndex]];
+        while (currStackIndex > 0) {
+            // We only offset on read
+            Node node = nodes[stack[--currStackIndex] + meshOffset];
 
             if (node.primCount > 0) {
-                for (uint i = node.firstPrim; i < node.firstPrim + node.primCount; i++) {
+                for (int i = node.firstPrim; i < node.firstPrim + node.primCount; i++) {
                     HitInfo triangleHi = rayTriangleIntersect(ray, triangles[i]);
                     if (triangleHi.hit && (triangleHi.dist < hi.dist)) {
                         hi = triangleHi;
-                        hi.tri = triangles[i];
-                        hi.smoothShading = true;
+                        hi.triIndex = meshInfo[m].y > 0.0 ? i : -1;
                     }
                 }
-            }
-            else {
-                Node left = nodes[node.leftChild];
-                Node right = nodes[node.rightChild];
+            } else {
+                Node left = nodes[node.leftChild + meshOffset];
+                Node right = nodes[node.rightChild + meshOffset];
                 float distLeft = rayAABBIntersect(ray, left.aabbMin, left.aabbMax);
                 float distRight = rayAABBIntersect(ray, right.aabbMin, right.aabbMax);
 
@@ -277,24 +272,15 @@ HitInfo intersects(Ray ray) {
                 float distNear = isLeftNearest ? distLeft : distRight;
                 float distFar = isLeftNearest ? distRight : distLeft;
 
-                if(distFar < hi.dist) stack[currStackIndex++] = isLeftNearest ? node.rightChild : node.leftChild;
-                if(distNear < hi.dist) stack[currStackIndex++] = isLeftNearest ? node.leftChild : node.rightChild;
+                if (distFar < hi.dist) stack[currStackIndex++] = isLeftNearest ? node.rightChild : node.leftChild;
+                if (distNear < hi.dist) stack[currStackIndex++] = isLeftNearest ? node.leftChild : node.rightChild;
             }
-
-    }
-
-    for (uint i = 0; i < 2; i++) {
-        HitInfo triangleHi = rayTriangleIntersect(ray, groundTriangles[i]);
-        if (triangleHi.hit && (triangleHi.dist < hi.dist)) {
-            hi = triangleHi;
-            hi.tri = groundTriangles[i];
-            hi.smoothShading = true;
         }
     }
 
-
     return hi;
 }
+
 
 vec3 trace(Ray ray, inout uint seed) {
     vec3 rayCol = vec3(1.);
@@ -303,7 +289,7 @@ vec3 trace(Ray ray, inout uint seed) {
     for (int i = 0; i < u_bounces; i++) {
         HitInfo hi = intersects(ray);
         if (!hi.hit) {
-            pixelColor += texture(skybox, ray.rd).rgb * 3.14 * clamp(i, u_showSkybox, 1) * rayCol;
+            pixelColor += texture(skybox, ray.rd).rgb * u_skyboxIntensity * rayCol * u_enableSkybox * clamp(i, u_showSkybox, 1);
             break;
         }
         // we assumed that emissiveCol is the same as diffuseCol for the emissive objects (1 less mat component to share)
@@ -313,9 +299,10 @@ vec3 trace(Ray ray, inout uint seed) {
         rayCol *= hi.material.diffuseCol;
 
         // smooth shading
-        if(hi.smoothShading && u_smoothShading){
-            vec3 bar = calculateBarycentric(hi.pos, hi.tri.v0.position, hi.tri.v1.position, hi.tri.v2.position);
-            hi.normal = bar.x * hi.tri.v0.normal + bar.y * hi.tri.v1.normal + bar.z * hi.tri.v2.normal;
+        if(hi.triIndex > 0 && u_smoothShading){
+            Triangle tri = triangles[hi.triIndex];
+            vec3 bar = calculateBarycentric(hi.pos, tri.v0.position, tri.v1.position,tri.v2.position);
+            hi.normal = bar.x * tri.v0.normal + bar.y * tri.v1.normal + bar.z * tri.v2.normal;
         }
 
         Ray newRay;
@@ -329,7 +316,7 @@ vec3 trace(Ray ray, inout uint seed) {
         specularReflectionDir = normalize(mix(specularReflectionDir, diffuseDir, hi.material.roughness));
 
         // ~metallic component
-        float shouldSpecular = (randomFloat01(seed) < hi.material.specularPerc) ? 1.0f : 0.0f;
+        float shouldSpecular = (randomFloat01(seed) < hi.material.metallic) ? 1.0f : 0.0f;
         newRay.rd = normalize(mix(diffuseDir, specularReflectionDir, shouldSpecular));
 
         // early stoppage
@@ -376,7 +363,6 @@ void main() {
     // accumulation
     vec3 colPrev = imageLoad(imgOutput, texelCoord).rgb;
     col = mix(colPrev, col, 1.0 / (float(u_frame) + 1));
-
 
     imageStore(imgOutput, texelCoord, vec4(col, 1.0));
 }

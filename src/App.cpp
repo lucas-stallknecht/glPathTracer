@@ -2,9 +2,10 @@
 // Created by Dusha on 25/05/2024.
 //
 #include "App.hpp"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 #include <iostream>
+#include <imfilebrowser.h>
 
 namespace rt {
 
@@ -19,7 +20,6 @@ namespace rt {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-
         // Window initialization
         m_window = glfwCreateWindow(LAYOUT_WIDTH, HEIGHT, "Custom Path Tracing engine", nullptr, nullptr);
         if (m_window == nullptr) {
@@ -29,6 +29,8 @@ namespace rt {
         glfwMakeContextCurrent(m_window);
 
         m_renderer = std::make_unique<Renderer>(LAYOUT_WIDTH, HEIGHT);
+        m_renderer->loadCubeMap("../resources/skyboxes/paris");
+        m_renderer->loadScene("../resources/scenes/squid_scene.txt");
 
         // Inputs
         glfwSetWindowUserPointer(m_window, this);
@@ -60,9 +62,19 @@ namespace rt {
         ImGui_ImplGlfw_InitForOpenGL(m_window,
                                      true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
         ImGui_ImplOpenGL3_Init();
+
+
+
     };
 
     void App::run() {
+
+        ImGui::FileBrowser sceneDialog(0, std::filesystem::path("../resources/scenes/"));
+        sceneDialog.SetTitle("Scene presets");
+        sceneDialog.SetTypeFilters({ ".txt" });
+        ImGui::FileBrowser sbDialog(ImGuiFileBrowserFlags_SelectDirectory, std::filesystem::path("../resources/skyboxes/"));
+        sbDialog.SetTitle("Skybox");
+        sbDialog.SetTypeFilters({ ".txt" });
 
         RenderOptions renderOptions = m_renderer->renderOptions;
 
@@ -71,18 +83,45 @@ namespace rt {
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
-
             {
-                ImGui::Begin("Rendering");
+                ImGui::Begin("Options");
                 ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / m_io->Framerate, m_io->Framerate);
-
                 bool change = false;
-                change |= ImGui::InputInt("Bounces", &renderOptions.bounces, 1, 2);
-                change |= ImGui::InputInt("Samples", &renderOptions.samples);
-                change |= ImGui::SliderInt("Jitter", &renderOptions.jitter, 1, 10);
-                change |= ImGui::Checkbox("Show skybox background", &renderOptions.skybox);
-                change |= ImGui::Checkbox("Smooth shading", &renderOptions.smoothShading);
+                if (ImGui::CollapsingHeader("Rendering")) {
+                    change |= ImGui::InputInt("Bounces", &renderOptions.bounces, 1, 2);
+                    change |= ImGui::InputInt("Samples", &renderOptions.samples);
+                    change |= ImGui::SliderInt("Jitter", &renderOptions.jitter, 1, 10);
+                }
+                if (ImGui::CollapsingHeader("Meshes")) {
+                    change |= ImGui::Checkbox("Smooth shading", &renderOptions.smoothShading);
+                    if(ImGui::Button("Scene preset"))
+                        sceneDialog.Open();
+                }
+                if (ImGui::CollapsingHeader("Skybox")) {
+                    change |= ImGui::Checkbox("Enable skybox", &renderOptions.enableSkybox);
+                    change |= ImGui::Checkbox("Show skybox background", &renderOptions.showSkybox);
+                    change |= ImGui::SliderFloat("Skybox intensity", &renderOptions.skyboxIntensity, 0.5, 5.0);
+                    if(ImGui::Button("Skybox directory"))
+                        sbDialog.Open();
+                }
+
                 ImGui::End();
+
+                sceneDialog.Display();
+                if(sceneDialog.HasSelected())
+                {
+                    m_renderer->loadScene(sceneDialog.GetSelected().string());
+                    m_renderer->resetAccumulation();
+                    sceneDialog.ClearSelected();
+                }
+                sbDialog.Display();
+                if(sbDialog.HasSelected())
+                {
+                    m_renderer->loadCubeMap(sbDialog.GetSelected().string());
+                    std::cout << sbDialog.GetSelected().string() << std::endl;
+                    m_renderer->resetAccumulation();
+                    sbDialog.ClearSelected();
+                }
 
                 if (change) {
                     m_renderer->resetAccumulation();

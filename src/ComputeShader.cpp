@@ -58,6 +58,13 @@ namespace rt {
         }
     }
 
+    void ComputeShader::setUniform2fv(const std::string& name, std::vector<glm::vec2> v){
+        GLint index = glGetUniformLocation(m_program, name.c_str());
+        if(index > -1){
+            glUniform2fv(index, v.size(), glm::value_ptr(v[0]));
+        }
+    }
+
     void ComputeShader::setUniformVec3(const std::string& name, glm::vec3 v){
         GLint index = glGetUniformLocation(m_program, name.c_str());
         if(index > -1){
@@ -70,5 +77,29 @@ namespace rt {
             glUniformMatrix4fv(index, 1, GL_FALSE, &m[0][0]);
         }
     }
+
+    void ComputeShader::logComputeShaderCapabilities(){
+        int work_grp_cnt[3];
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &work_grp_cnt[0]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &work_grp_cnt[1]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &work_grp_cnt[2]);
+        std::cout << "Max work groups per compute shader" <<
+                  " x:" << work_grp_cnt[0] <<
+                  " y:" << work_grp_cnt[1] <<
+                  " z:" << work_grp_cnt[2] << "\n";
+
+        int work_grp_size[3];
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_grp_size[0]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_grp_size[1]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_grp_size[2]);
+        std::cout << "Max work group sizes" <<
+                  " x:" << work_grp_size[0] <<
+                  " y:" << work_grp_size[1] <<
+                  " z:" << work_grp_size[2] << "\n";
+
+        int work_grp_inv;
+        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &work_grp_inv);
+        std::cout << "Max invocations count per work group: " << work_grp_inv << "\n";
+    };
 
 } // rt
