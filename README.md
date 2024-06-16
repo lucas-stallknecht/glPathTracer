@@ -1,6 +1,9 @@
 # OpenGL PathTracer
 
-![pt_drake.png](pt_drake.png)
+![img.png](clay_dragon.png)
+![img_2.png](mando.png)
+![img.png](squid.png)
+
 Achievements :
 - [x] Compute shaders
 - [x] Camera controls
