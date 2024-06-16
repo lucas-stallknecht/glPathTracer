@@ -34,13 +34,16 @@ namespace rt {
                 if(prefix == "m-") {
                     std::string meshPath, depth, smoothShading;
                     ssLine >> meshPath >> depth >> smoothShading;
-                    m_meshesInfo.push_back(MeshInfo{meshPath, std::stoi(depth), std::stoi(smoothShading)});
+                    m_meshesInfo.push_back(MeshInfo{meshPath,
+                                                    std::stoi(depth),
+                                                    std::stoi(smoothShading)});
                 }
             }
 
             sceneFile.close();
         }
         catch (std::ifstream::failure e) {
+            // getLine will return an error with there is the eof but won't stop one step before, weird.
             if (!sceneFile.eof()){
                 std::cout << "ERROR::SCENE::FILE_NOT_SUCCESFULLY_READ : " << sceneFilePath << " " << e.what() << std::endl;
             }

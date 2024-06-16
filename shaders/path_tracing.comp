@@ -2,6 +2,7 @@
 
 #define PI 3.14159265359f
 #define JITTER_CONSTANT 0.0001
+#define N_SPHERES 0
 
 struct Vertex {
     vec3 position;
@@ -21,19 +22,18 @@ struct Ray {
 };
 
 struct Sphere {
-    // base alignment   // aligned offset
-    vec3 pos;           // 12               // 0
-    float rad;          // 4               // 12
-    Material material;  // 32               // 16
-};                      // 48 bytes
+    vec3 pos;
+    float rad;
+    Material material;
+};
 
 struct Triangle {
-    Vertex v0;
-    Vertex v1;
-    Vertex v2;
-    vec3 centroid_;
-    int matIndex;
-};                      // 32*3 + 12 + 4 = 112 bytes total
+    Vertex v0; // 32
+    Vertex v1; // 32
+    Vertex v2; // 32
+    vec3 centroid_; // 12
+    int matIndex; // 4
+};  // 112 bytes total
 
 struct Node {
     vec3 aabbMin;
@@ -42,7 +42,7 @@ struct Node {
     uint rightChild;
     int firstPrim;
     int primCount;
-}; // 48 bytes
+}; // 48 bytes total
 
 struct HitInfo {
     bool hit;
@@ -66,14 +66,10 @@ layout (std430, binding = 3) readonly buffer materialsBuffer {
     Material[] materials;
 };
 
-#define N_SPHERES 0
 Sphere spheres[3] = Sphere[3](
-    Sphere(vec3(0.25, 0.55, 0.0), 0.05,
-           Material(vec3(0.99, 0.99, 0.99), 0.0, 0.25, 1.0)),
-    Sphere(vec3(-0.25, 0.25, -0.25), 0.05,
-           Material(vec3(0.99, 0.99, 0.99), 0.0, 0.0, 0.25)),
-    Sphere(vec3(-0.25, 0.88, 0.25), 0.05,
-           Material(vec3(0.99, 0.99, 0.99), 0.0, 0.0, 1.0))
+    Sphere(vec3(0.25, 0.55, 0.0), 0.05, Material(vec3(0.99, 0.99, 0.99), 0.0, 0.25, 1.0)),
+    Sphere(vec3(-0.25, 0.25, -0.25), 0.05, Material(vec3(0.99, 0.99, 0.99), 0.0, 0.0, 0.25)),
+    Sphere(vec3(-0.25, 0.88, 0.25), 0.05, Material(vec3(0.99, 0.99, 0.99), 0.0, 0.0, 1.0))
 );
 
 
@@ -94,6 +90,8 @@ uniform mat4 invProjection;
 // Geometries uniform
 uniform int u_nMeshes;
 uniform vec2 meshInfo[10];
+
+uniform bool u_gammaCorrection;
 
 
 // ========= RANDOM FUNCTIONS =========
@@ -120,6 +118,34 @@ vec3 randomUnitVector(inout uint state) {
 }
 // ====================================
 
+// ========= GAMMA CORRECTION =========
+vec3 LessThan(vec3 f, float value) {
+    return vec3(
+        (f.x < value) ? 1.0f : 0.0f,
+        (f.y < value) ? 1.0f : 0.0f,
+        (f.z < value) ? 1.0f : 0.0f);
+}
+
+vec3 LinearToSRGB(vec3 rgb) {
+    rgb = clamp(rgb, 0.0f, 1.0f);
+
+    return mix(
+        pow(rgb, vec3(1.0f / 2.4f)) * 1.055f - 0.055f,
+        rgb * 12.92f,
+        LessThan(rgb, 0.0031308f)
+    );
+}
+
+vec3 SRGBToLinear(vec3 rgb) {
+    rgb = clamp(rgb, 0.0f, 1.0f);
+
+    return mix(
+        pow(((rgb + 0.055f) / 1.055f), vec3(2.4f)),
+        rgb / 12.92f,
+        LessThan(rgb, 0.04045f)
+    );
+}
+// ====================================
 
 // ========= RAY SURFACE =========
 HitInfo raySphereIntersect(Ray ray, Sphere sph) {
@@ -194,14 +220,14 @@ float rayAABBIntersect(Ray ray, vec3 bmin, vec3 bmax) {
 }
 
 
-HitInfo rayPlaIntersect(Ray ray, in vec4 p )
+HitInfo rayPlaIntersect(Ray ray, in vec4 p)
 {
     HitInfo hi;
     hi.hit = false;
 
-    float denom = -(dot(ray.ro,p.xyz)+p.w)/dot(ray.rd,p.xyz);
+    float denom = -(dot(ray.ro, p.xyz) + p.w) / dot(ray.rd, p.xyz);
 
-    if(denom > 0.0){
+    if (denom > 0.0) {
         hi.pos = ray.ro + denom * ray.rd;
         hi.dist = denom;
         hi.normal = p.xyz;
@@ -233,6 +259,8 @@ HitInfo intersects(Ray ray) {
     hi.dist = 1e10;
     hi.hit = false;
 
+    // sphere data does not come from the CPU, store as shader constant
+    // this became more of a debug tool now
     for (int i = 0; i < N_SPHERES; i++) {
         HitInfo sphereHi = raySphereIntersect(ray, spheres[i]);
         if (sphereHi.hit && (sphereHi.dist < hi.dist)) {
@@ -241,19 +269,23 @@ HitInfo intersects(Ray ray) {
         }
     }
 
+    // BVH : 12/06 discovered the stack method instead of the hit link and miss method, s/o Sebastian Lague
+    // every mesh has its own bounding volume hierarchy
     for (int m = 0; m < u_nMeshes; m++) {
-        // Extract the mesh offset from meshInfo
+        // extract the mesh offset from meshInfo
         int meshOffset = int(meshInfo[m].x);
 
-        // BVH : 12/06 discovered the stack method instead of the hit link and miss method
+        // "Pile" in French
+        // the stack containes indices instead of nodes directly in order to minimize data transfer weight
         uint stack[32];
         int currStackIndex = 0;
         stack[currStackIndex++] = 0;
 
         while (currStackIndex > 0) {
-            // We only offset on read
+            // we only offset the node index on read
             Node node = nodes[stack[--currStackIndex] + meshOffset];
 
+            // the node is a leaf
             if (node.primCount > 0) {
                 for (int i = node.firstPrim; i < node.firstPrim + node.primCount; i++) {
                     HitInfo triangleHi = rayTriangleIntersect(ray, triangles[i]);
@@ -263,6 +295,7 @@ HitInfo intersects(Ray ray) {
                     }
                 }
             } else {
+                // The closest child will be looked at first
                 Node left = nodes[node.leftChild + meshOffset];
                 Node right = nodes[node.rightChild + meshOffset];
                 float distLeft = rayAABBIntersect(ray, left.aabbMin, left.aabbMax);
@@ -289,7 +322,13 @@ vec3 trace(Ray ray, inout uint seed) {
     for (int i = 0; i < u_bounces; i++) {
         HitInfo hi = intersects(ray);
         if (!hi.hit) {
-            pixelColor += texture(skybox, ray.rd).rgb * u_skyboxIntensity * rayCol * u_enableSkybox * clamp(i, u_showSkybox, 1);
+            vec3 skyColor = texture(skybox, ray.rd).rgb;
+            if(u_gammaCorrection)
+                    skyColor = SRGBToLinear(skyColor);
+
+            // reminder :  u_enableSkybox = 0 or 1
+            //             clamp(i, u_showSkybox, 1) will show the skybox only in the reflections if u_showSkybox is 0
+            pixelColor += skyColor * u_skyboxIntensity * rayCol * u_enableSkybox * clamp(i, u_showSkybox, 1);
             break;
         }
         // we assumed that emissiveCol is the same as diffuseCol for the emissive objects (1 less mat component to share)
@@ -298,10 +337,10 @@ vec3 trace(Ray ray, inout uint seed) {
         pixelColor += (hi.material.diffuseCol * hi.material.emissiveStrength) * rayCol;
         rayCol *= hi.material.diffuseCol;
 
-        // smooth shading
-        if(hi.triIndex > 0 && u_smoothShading){
+        // smooth shading : only happens if the hit triangle and the uniform allow it
+        if (hi.triIndex > 0 && u_smoothShading) {
             Triangle tri = triangles[hi.triIndex];
-            vec3 bar = calculateBarycentric(hi.pos, tri.v0.position, tri.v1.position,tri.v2.position);
+            vec3 bar = calculateBarycentric(hi.pos, tri.v0.position, tri.v1.position, tri.v2.position);
             hi.normal = bar.x * tri.v0.normal + bar.y * tri.v1.normal + bar.z * tri.v2.normal;
         }
 
@@ -315,7 +354,7 @@ vec3 trace(Ray ray, inout uint seed) {
         vec3 specularReflectionDir = reflect(ray.rd, hi.normal);
         specularReflectionDir = normalize(mix(specularReflectionDir, diffuseDir, hi.material.roughness));
 
-        // ~metallic component
+        // the less metallic the component is, the less specular reflection there will be
         float shouldSpecular = (randomFloat01(seed) < hi.material.metallic) ? 1.0f : 0.0f;
         newRay.rd = normalize(mix(diffuseDir, specularReflectionDir, shouldSpecular));
 
@@ -360,9 +399,11 @@ void main() {
         col += trace(randomCam, seed) / float(u_samples);
     }
 
+
     // accumulation
     vec3 colPrev = imageLoad(imgOutput, texelCoord).rgb;
     col = mix(colPrev, col, 1.0 / (float(u_frame) + 1));
+
 
     imageStore(imgOutput, texelCoord, vec4(col, 1.0));
 }

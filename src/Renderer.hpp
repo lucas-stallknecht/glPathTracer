@@ -19,10 +19,15 @@ namespace rt {
         int bounces = 5;
         int samples = 1;
         int jitter = 1;
+
         bool enableSkybox = true;
         bool showSkybox = false;
         bool smoothShading = false;
-        float skyboxIntensity = 2.5;
+        float skyboxIntensity = 3.1;
+
+        bool gammaCorrection = true;
+        bool toneMapping = true;
+        float exposure = 1.0;
     };
 
     class Renderer {

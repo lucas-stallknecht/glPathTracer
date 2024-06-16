@@ -11,7 +11,8 @@ Achievements :
 - [x] Smooth shading
 - [X] CubeMap skybox
 - [x] Scenes preset import with ImGUI
+- [x] Gamma correction and Tone mapping
 
 
-To-do :
+Remaining :
 - Optimise the cutting process : heuristic instead of average centroid position

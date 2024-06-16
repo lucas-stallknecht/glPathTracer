@@ -13,6 +13,7 @@
 namespace rt {
 
     class ComputeShader {
+        // I could have done an inheritance with the Shader Class
     public:
         ComputeShader(const std::string &compPath);
         void use();

@@ -28,9 +28,10 @@ namespace rt {
         }
         glfwMakeContextCurrent(m_window);
 
+        // Renderer and default scene elements
         m_renderer = std::make_unique<Renderer>(LAYOUT_WIDTH, HEIGHT);
         m_renderer->loadCubeMap("../resources/skyboxes/paris");
-        m_renderer->loadScene("../resources/scenes/squid_scene.txt");
+        m_renderer->loadScene("../resources/scenes/dragon_scene.txt");
 
         // Inputs
         glfwSetWindowUserPointer(m_window, this);
@@ -62,8 +63,6 @@ namespace rt {
         ImGui_ImplGlfw_InitForOpenGL(m_window,
                                      true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
         ImGui_ImplOpenGL3_Init();
-
-
 
     };
 
@@ -103,6 +102,11 @@ namespace rt {
                     change |= ImGui::SliderFloat("Skybox intensity", &renderOptions.skyboxIntensity, 0.5, 5.0);
                     if(ImGui::Button("Skybox directory"))
                         sbDialog.Open();
+                }
+                if (ImGui::CollapsingHeader("Color Correction")) {
+                    change |= ImGui::Checkbox("Gamma Correction", &renderOptions.gammaCorrection);
+                    change |= ImGui::Checkbox("ACESFilm", &renderOptions.toneMapping);
+                    change |= ImGui::SliderFloat("Exposure", &renderOptions.exposure, 0.5, 2.5);
                 }
 
                 ImGui::End();

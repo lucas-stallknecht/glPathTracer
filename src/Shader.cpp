@@ -92,6 +92,20 @@ namespace rt {
         glUseProgram(0);
     }
 
+    void Shader::setUniform1i(const std::string& name, int i){
+        GLint index = glGetUniformLocation(m_program, name.c_str());
+        if(index > -1){
+            glUniform1i(index, i);
+        }
+    }
+
+    void Shader::setUniform1f(const std::string& name, float f){
+        GLint index = glGetUniformLocation(m_program, name.c_str());
+        if(index > -1){
+            glUniform1f(index, f);
+        }
+    }
+
 
 
 } // rt

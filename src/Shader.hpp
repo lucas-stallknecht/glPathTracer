@@ -16,6 +16,8 @@ namespace rt {
         void disuse();
         static void checkCompileErrors(GLuint shader, std::string type);
         static void parseShaderFile(const std::string &filePath,  std::string& sourceCode);
+        void setUniform1i(const std::string& name, int i);
+        void setUniform1f(const std::string& name, float f);
 
     private:
         GLuint compileShader(const char *vertCode, const char *fragCode);

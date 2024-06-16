@@ -201,7 +201,7 @@ namespace rt {
             m_nodes.push_back(rightChild);
 
             // the node is not a leaf anymore
-            // we avoid dangling pointer
+            // we avoid dangling pointer by using vector access instead
             m_nodes[nodeIndex].primCount = 0;
 
             // recalculate the bounding box for each child

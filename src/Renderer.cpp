@@ -79,12 +79,14 @@ namespace rt {
         std::vector<Node> nodes;
         std::vector<Material> materials;
         std::vector<glm::vec2> meshInfoList;
+        // we build the vectors by offsetting the next mesh with previous vector sizes
         for(const auto &meshInfo: meshFiles) {
-            Mesh geo(meshInfo.objPath, meshInfo.depth, materials.size(), triangles.size(), false);
-            triangles.insert(triangles.end(),geo.m_triangles.begin(), geo.m_triangles.end());
-            materials.insert(materials.end(),geo.m_materials.begin(), geo.m_materials.end());
+            Mesh mesh(meshInfo.objPath, meshInfo.depth, materials.size(), triangles.size(), false);
+            triangles.insert(triangles.end(),mesh.m_triangles.begin(), mesh.m_triangles.end());
+            materials.insert(materials.end(),mesh.m_materials.begin(), mesh.m_materials.end());
+            // node offset, smoothShading or not
             meshInfoList.emplace_back(nodes.size(), (int)meshInfo.smoothShading);
-            nodes.insert(nodes.end(),geo.m_nodes.begin(), geo.m_nodes.end());
+            nodes.insert(nodes.end(),mesh.m_nodes.begin(), mesh.m_nodes.end());
         }
 
         GLsizeiptr materialsVecSize = materials.size() * sizeof(Material);
@@ -111,6 +113,7 @@ namespace rt {
     }
 
     void Renderer::initializeRenderQuad() {
+        // Those are sent to the vertex shader, not the ray-tracing compute shader
         float vertices[] = {
                 // positions        // texture Coords
                 -1.0f,  1.0f, 0.0f, 1.0f,
@@ -127,7 +130,7 @@ namespace rt {
         // Vertices positions
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-        // Texcoords
+        // TexCoords
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
@@ -174,10 +177,14 @@ namespace rt {
         m_compShader->setUniform1i("u_showSkybox", renderOptions.showSkybox);
         m_compShader->setUniform1i("u_smoothShading", renderOptions.smoothShading);
         m_compShader->setUniform1f("u_skyboxIntensity", renderOptions.skyboxIntensity);
+        m_compShader->setUniform1i("u_gammaCorrection", renderOptions.gammaCorrection);
         glDispatchCompute((unsigned int)VP_WIDTH/8, (unsigned int)VP_HEIGHT/8, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         m_shader->use();
+        m_shader->setUniform1i("u_gammaCorrection", renderOptions.gammaCorrection);
+        m_shader->setUniform1i("u_toneMapping", renderOptions.toneMapping);
+        m_shader->setUniform1f("u_exposure", renderOptions.exposure);
         glBindVertexArray(m_vao);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, m_rtTexture);
