@@ -56,3 +56,13 @@ cmake --build .
 
 ## License
 This project is licensed under the CC-BY-NC-ND-4.0 License. See the LICENSE file for more details.
+
+## Useful resources if you want to build a similar project : 
+- https://learnopengl.com/Guest-Articles/2022/Compute-Shaders/Introduction
+- https://antongerdelan.net/opengl/compute.html
+- https://www.youtube.com/watch?v=nF4X9BIUzx0
+- https://raytracing.github.io/
+- https://blog.demofox.org/2020/06/06/casual-shadertoy-path-tracing-2-image-improvement-and-glossy-reflections/
+- https://github.com/RobertBeckebans/OpenGL-PathTracer
+- https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-acceleration-structure/introduction.html
+- https://jacco.ompf2.com/2022/04/13/how-to-build-a-bvh-part-1-basics/
