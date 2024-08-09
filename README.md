@@ -2,7 +2,7 @@
 
 **glPathTracer** is a personal real-time path tracing renderer built with OpenGL 4.5 compute shaders. This project plays the role of introducing custom BRDFs and complex buffer management. 
 
-![Dragon Model](clay_dragon.png)
+![Dragon Model](preview.png)
 
 ## Features
 
