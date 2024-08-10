@@ -1,1 +1,0 @@
-m- ../resources/objects/mirror_ball.obj 10 0

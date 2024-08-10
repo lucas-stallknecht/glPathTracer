@@ -2,7 +2,8 @@
 
 **glPathTracer** is a personal real-time path tracing renderer built with OpenGL 4.5 compute shaders. This project plays the role of introducing custom BRDFs and complex buffer management. 
 
-![Dragon Model](preview.png)
+![Dragon Model](./images/dragon.png)
+![Mask](./images/mask.png)
 
 ## Features
 
@@ -66,3 +67,8 @@ This project is licensed under the CC-BY-NC-ND-4.0 License. See the LICENSE file
 - https://github.com/RobertBeckebans/OpenGL-PathTracer
 - https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-acceleration-structure/introduction.html
 - https://jacco.ompf2.com/2022/04/13/how-to-build-a-bvh-part-1-basics/
+- https://www.youtube.com/watch?v=C1H4zIiCOaI
+
+Models are not mine, the links to their download pages :
+- Dragon : https://sketchfab.com/3d-models/screaming-dragon-head-3d-print-5712b52618f743b193bdd39459099f25
+- Mask : https://sketchfab.com/3d-models/samurai-mask-model-2-70a43b389819494f9fa23065ede03afc

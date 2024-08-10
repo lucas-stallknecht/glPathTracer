@@ -31,7 +31,7 @@ namespace rt {
         // Renderer and default scene elements
         m_renderer = std::make_unique<Renderer>(LAYOUT_WIDTH, HEIGHT);
         m_renderer->loadCubeMap("../resources/skyboxes/paris");
-        m_renderer->loadScene("../resources/scenes/dragon_scene.txt");
+        m_renderer->loadScene("../resources/scenes/mask_scene.txt");
 
         // Inputs
         glfwSetWindowUserPointer(m_window, this);

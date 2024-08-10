@@ -1,7 +1,7 @@
 #version 450 core
 
 #define PI 3.14159265359f
-#define JITTER_CONSTANT 0.0001
+#define JITTER_CONSTANT 0.00002
 #define N_SPHERES 0
 
 struct Vertex {

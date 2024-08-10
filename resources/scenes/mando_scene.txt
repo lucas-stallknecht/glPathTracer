@@ -1,2 +1,0 @@
-m- ../resources/objects/mando.obj 32 1
-m- ../resources/objects/cylinder.obj 4 0
