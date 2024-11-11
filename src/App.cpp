@@ -2,10 +2,8 @@
 // Created by Dusha on 25/05/2024.
 //
 #include "App.hpp"
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
 #include <iostream>
-#include <imfilebrowser.h>
+
 
 namespace rt {
 

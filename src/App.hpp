@@ -4,19 +4,26 @@
 
 #pragma once
 
-#include "Renderer.hpp"
-#include "Camera.hpp"
+#include "imgui.h"
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+#include <imfilebrowser.h>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include "imgui.h"
 #include <memory>
+
+
+#include "Renderer.hpp"
+#include "Camera.hpp"
+
 
 namespace rt {
 
     class App {
 
-        static constexpr int LAYOUT_WIDTH = 1600;
-        static constexpr int HEIGHT = 900;
+        static constexpr int LAYOUT_WIDTH = 1860;
+        static constexpr int HEIGHT = 960;
 
     public:
         App();

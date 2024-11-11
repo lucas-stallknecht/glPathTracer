@@ -29,7 +29,7 @@
 
 Ensure you have the following tools and libraries:
 
-- CMake 3.28 or higher
+- CMake 3.16 or higher
 - A C++17 compatible compiler
 - OpenGL 4.5 compatible GPU
 - GLFW, GLAD, ImGui, stb, and TinyOBJLoader libraries (included in `libs` directory)
@@ -44,15 +44,13 @@ Ensure you have the following tools and libraries:
 
 2. Build the project using CMake:
 ```bash
-mkdir build
-cd build
-cmake ..
-cmake --build .
+cmake -S . -B build
+cmake --build build
 ```
 
 ## Usage
-- Run the compiled executable from the build directory.
-- Use the mouse and keyboard to navigate the scene and control the camera.
+- Run the compiled executable in the build directory.
+- Hold the right mouse button to activate focus mode. Use the keyboard to navigate the scene and the mouse to control the camera.
 - Load different scene presets using the ImGUI interface.
 
 ## License

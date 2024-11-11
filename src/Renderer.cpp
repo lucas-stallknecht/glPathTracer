@@ -3,12 +3,14 @@
 //
 
 #include "Renderer.hpp"
+#include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 #include "Mesh.hpp"
 #include "Scene.hpp"
+
 
 namespace rt {
 
