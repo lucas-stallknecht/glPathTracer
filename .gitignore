@@ -1,5 +1,7 @@
 /cmake-build-debug
+/cmake-build-release
 /build-debug
 /build-release
 /build
+/.idea
 resources.md

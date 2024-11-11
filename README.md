@@ -29,7 +29,7 @@
 
 Ensure you have the following tools and libraries:
 
-- CMake 3.16 or higher
+- CMake 3.20 or higher
 - A C++17 compatible compiler
 - OpenGL 4.5 compatible GPU
 - GLFW, GLAD, ImGui, stb, and TinyOBJLoader libraries (included in `libs` directory)
@@ -38,8 +38,8 @@ Ensure you have the following tools and libraries:
 
 1. Clone the repository:
 ```bash
-   git clone https://github.com/yourusername/glPathTracer.git
-   cd glPathTracer
+git clone https://github.com/yourusername/glPathTracer.git
+cd glPathTracer
 ```
 
 2. Build the project using CMake:
