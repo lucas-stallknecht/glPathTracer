@@ -2,8 +2,8 @@
 
 **glPathTracer** is a personal real-time path tracing renderer built with OpenGL 4.5 compute shaders. This project plays the role of introducing custom BRDFs and complex buffer management. 
 
-![Dragon Model](./images/dragon.png)
-![Mask](./images/mask.png)
+![Dragon Model](preview/dragon.png)
+![Mask](preview/mask.png)
 
 ## Features
 
@@ -29,7 +29,7 @@
 
 Ensure you have the following tools and libraries:
 
-- CMake 3.20 or higher
+- CMake 3.16 or higher
 - A C++17 compatible compiler
 - OpenGL 4.5 compatible GPU
 - GLFW, GLAD, ImGui, stb, and TinyOBJLoader libraries (included in `libs` directory)
@@ -50,7 +50,7 @@ cmake --build build
 
 ## Usage
 - Run the compiled executable in the build directory.
-- Hold the right mouse button to activate focus mode. Use the keyboard to navigate the scene and the mouse to control the camera.
+- Hold the right mouse button to activate focus mode. Use the keyboard to navigate the scene and the mouse to control the camera (WASD, Unreal Engine type controls).
 - Load different scene presets using the ImGUI interface.
 
 ## License

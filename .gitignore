@@ -1,7 +1,9 @@
 /cmake-build-debug
 /cmake-build-release
+/CMakeFiles
 /build-debug
 /build-release
 /build
 /.idea
 resources.md
+CMakeCache.txt
